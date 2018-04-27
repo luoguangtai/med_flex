@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<actionScriptProperties analytics="false" mainApplicationPath="med_flex.mxml" projectUUID="c617505b-fb29-4ab7-a9b9-d4a21fda814a" version="10">
+  <compiler additionalCompilerArguments="-locale en_US -keep-all-type-selectors=true" autoRSLOrdering="true" copyDependentFiles="true" flexSDK="Flex 4.6.0" fteInMXComponents="false" generateAccessible="true" htmlExpressInstall="true" htmlGenerate="true" htmlHistoryManagement="true" htmlPlayerVersionCheck="true" includeNetmonSwc="false" outputFolderLocation="D:/HSIT-DEV/eclipse_workspace/med_java/web/flex" outputFolderPath="bin-debug" removeUnusedRSL="true" sourceFolderPath="src" strict="true" targetPlayerVersion="0.0.0" useApolloConfig="false" useDebugRSLSwfs="true" verifyDigests="true" warn="true">
+    <compilerSourcePath/>
+    <libraryPath defaultLinkType="0">
+      <libraryPathEntry kind="4" path="">
+        <excludedEntries>
+          <libraryPathEntry kind="3" linkType="1" path="${PROJECT_FRAMEWORKS}/libs/flex.swc" useDefaultLinkType="false"/>
+          <libraryPathEntry kind="3" linkType="1" path="${PROJECT_FRAMEWORKS}/libs/core.swc" useDefaultLinkType="false"/>
+        </excludedEntries>
+      </libraryPathEntry>
+      <libraryPathEntry kind="1" linkType="1" path="libs"/>
+      <libraryPathEntry kind="3" linkType="1" path="/hc_flex/bin/hc_flex.swc" useDefaultLinkType="false"/>
+    </libraryPath>
+    <sourceAttachmentPath/>
+  </compiler>
+  <applications>
+    <application path="med_flex.mxml"/>
+    <application path="menu.mxml"/>
+  </applications>
+  <modules>
+    <module application="src/med_flex.mxml" destPath="modules/OppAccount.swf" optimize="true" sourcePath="src/modules/OppAccount.mxml"/>
+    <module application="src/med_flex.mxml" destPath="modules/MedRepairTask.swf" optimize="true" sourcePath="src/modules/MedRepairTask.mxml"/>
+    <module application="src/med_flex.mxml" destPath="modules/MedKeepWarn.swf" optimize="true" sourcePath="src/modules/MedKeepWarn.mxml"/>
+    <module application="src/med_flex.mxml" destPath="modules/OppOrg.swf" optimize="true" sourcePath="src/modules/OppOrg.mxml"/>
+    <module application="src/med_flex.mxml" destPath="modules/MedProduct.swf" optimize="true" sourcePath="src/modules/MedProduct.mxml"/>
+    <module application="src/med_flex.mxml" destPath="modules/ChartReport1.swf" optimize="true" sourcePath="src/modules/ChartReport1.mxml"/>
+    <module application="src/med_flex.mxml" destPath="modules/MedKeepTask.swf" optimize="true" sourcePath="src/modules/MedKeepTask.mxml"/>
+  </modules>
+  <buildCSSFiles/>
+  <flashCatalyst validateFlashCatalystCompatibility="false"/>
+</actionScriptProperties>

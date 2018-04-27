@@ -1,0 +1,670 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--产品档案信息-->
+<s:Module xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		  xmlns:s="library://ns.adobe.com/flex/spark" 
+		  xmlns:mx="library://ns.adobe.com/flex/mx" 
+		  width="100%" height="100%"
+		  xmlns:hc="http://flex.hc.org" 
+		  creationComplete="module1_creationCompleteHandler(event)" xmlns:toolbar="hc.components.toolbar.*" xmlns:detailGrid="hc.components.detailGrid.*" xmlns:common="common.*"
+		  >
+	<fx:Script>
+		<![CDATA[
+			import hc.components.MessageDialog;
+			import hc.components.MessageTip;
+			import hc.util.FreeFormUtil;
+			import hc.util.HttpUtil;
+			import hc.util.LabelFunctionUtil;
+			import hc.util.Util;
+			
+			import mx.collections.ArrayList;
+			import mx.events.FlexEvent;
+			
+			import spark.components.gridClasses.GridColumn;
+			
+			protected function module1_creationCompleteHandler(event:FlexEvent):void
+			{
+				var param:Object = new Object();
+				HttpUtil.doPost('medProductAction!format.do',param,function (obj:Object):void{
+					orgTree.dataProvider = obj.orgTreeMap;
+					orgTree.validateNow();
+					orgTree.selectedIndex=0;
+					orgTree.expandChildrenOf(orgTree.selectedItem,true);
+					
+					loadProductGrid();
+				});
+			}
+			/**
+			 * 加载产品档案表格数据
+			 */
+			private function loadProductGrid():void{
+				var param:Object = FreeFormUtil.getFormParam([moreQueryForm]);
+				productGrid.param=param;
+				productGrid.loadData();
+			}
+			/**
+			 * 增加 按钮事件
+			 */
+			protected function productAddBtn_clickHandler(event:MouseEvent):void
+			{
+				productForm1.reset();
+				productForm2.reset();
+				productForm3.reset();
+				productWin.title="增加产品档案";
+				productWin.show();
+			}
+			/**
+			 * 编辑
+			 */
+			public function productEditBtn_clickHandler(event:MouseEvent):void{
+				var selProductArr:Array = productGrid.getSelected("selected");
+				if(selProductArr.length<=0){
+					MessageTip.warning("请选择一条要操作的记录");
+					return;
+				}
+				if(selProductArr.length>1){
+					MessageTip.warning("只能对一条记录进行修改");
+					return;
+				}
+				productForm1.reset();
+				productForm2.reset();
+				productForm3.reset();
+				productForm1.dataValue = selProductArr[0];
+				productForm2.dataValue = selProductArr[0];
+				productForm3.dataValue = selProductArr[0];
+				productWin.title="编辑产品档案";
+				productWin.show();
+			}
+			/**
+			 * 删除
+			 */
+			public function productDelBtn_clickHandler(event:MouseEvent):void{
+				var selProductArr:Array = productGrid.getSelected("selected");
+				if(selProductArr.length<=0){
+					MessageTip.warning("请选择要删除的记录");
+					return;
+				}
+				MessageDialog.confirmDelete(function():void{
+					var param:Object = productGrid.selectedItem;
+					param.productJson = JSON.stringify(selProductArr);
+					HttpUtil.doPost('medProductAction!removeMedProduct.do',param,function (obj:Object):void{
+						loadProductGrid();
+						MessageTip.success("删除成功");
+					},null,true);
+				});
+			}
+			/**
+			 * 详细
+			 */
+			protected function productDetailBtn_clickHandler(event:MouseEvent):void
+			{
+				var selProductArr:Array = productGrid.getSelected("selected");
+				if(selProductArr.length<=0){
+					MessageTip.warning("请选择一条要查看的记录");
+					return;
+				}
+				if(selProductArr.length>1){
+					MessageTip.warning("只能对一条记录查看");
+					return;
+				}
+				FreeFormUtil.setFormValue([productDetailGrid1,productDetailGrid2,productDetailGrid3,productDetailGrid4],selProductArr[0]);
+				productDetailWin.show();
+			}
+			/**
+			 * 保存
+			 */
+			protected function productSave_clickHandler(event:MouseEvent):void
+			{
+				if(!FreeFormUtil.validateForm([productForm1])){
+					return;
+				}
+				var param:Object = FreeFormUtil.getFormParam([productForm1,productForm2,productForm3]);
+				HttpUtil.doPost('medProductAction!saveMedProduct.do',param,function (obj:Object):void{
+					loadProductGrid();
+					productForm1.reset();
+					productForm2.reset();
+					productForm3.reset();
+					productWin.close();
+					MessageTip.success("操作成功");
+				},null,true);
+			}
+			
+			
+			
+			protected function keepSetBtn_clickHandler(event:MouseEvent):void
+			{
+				var selProductArr:Array = productGrid.getSelected("selected");
+				if(selProductArr.length<=0){
+					MessageTip.warning("请先选择需要操作的数据");
+					return;
+				}
+				keepSetWin.show();
+			}
+			
+			protected function keepSetSaveBtn_clickHandler(event:MouseEvent):void
+			{
+				var selProductArr:Array = productGrid.getSelected("selected");
+				var param:Object = FreeFormUtil.getFormParam([keepSetForm]);
+				param.productJson = JSON.stringify(selProductArr);
+				HttpUtil.doPost('medProductAction!saveMedProductKeep.do',param,function (obj:Object):void{
+					loadProductGrid();
+					keepSetWin.close();
+					MessageTip.success("操作成功");
+				},null,true);
+			}
+			
+			public function detailBarcodeBtn_clickHandler(event:MouseEvent):void
+			{
+				detailBarcodeWin.show();
+			}
+			
+			protected function printBarcodeBtn_clickHandler(event:MouseEvent):void
+			{
+//				MessageDialog.showDialog("打印二维码","打印中...");
+				printProduct("");
+			}
+			
+			/**
+			 * 判断是否允许访问JavaScript脚本
+			 */
+			public static function isInterfaceAvailable():Boolean{
+				if(!ExternalInterface.available){
+					MessageTip.warning("当前页面可能未完成加载，脚本访问错误，不能打印！");
+					return false;
+				}else{
+					return true;
+				}
+			}
+			public function printProduct(printData:String):void{
+				//脚本访问权限检查
+				if(!isInterfaceAvailable()){
+					return;
+				}
+				var tp:String = ExternalInterface.call("printProduct", printData);
+				
+			}
+			public static function formatColumnColor(itemData:Object, column:GridColumn):uint
+			{
+				var itemColor:uint=0x000000; //默认黑色；
+				if (itemData.hasOwnProperty("productId"))
+				{
+					itemColor=0xA020F0;
+				}
+				itemData.unit=itemColor;
+				return itemColor;
+			}
+			public static function formatColumnColor1(itemData:Object, column:GridColumn):uint
+			{
+				var itemColor:uint=0x000000; //默认黑色；
+				if (itemData.hasOwnProperty("productId"))
+				{
+					itemColor=0x3A5FCD;
+				}
+				itemData.unit=itemColor;
+				return itemColor;
+			}
+			
+			
+			protected function moreQueryBtn_clickHandler(event:MouseEvent):void
+			{
+				moreQueryWin.show();
+			}
+			
+			protected function moreQueryConfBtn_clickHandler(event:MouseEvent):void
+			{
+				loadProductGrid();
+				moreQueryWin.close();
+			}
+			
+			
+			protected function addUserOrgBtn_clickHandler(event:MouseEvent):void
+			{
+				selOrgWin.show();
+			}
+			
+			protected function selOrgConfBtn_clickHandler(event:MouseEvent):void
+			{
+				if(Util.isBlank(orgTree.selectedItem)){
+					MessageTip.warning("请选择单位");
+					return;
+				}
+				userOrgNameText.text=orgTree.selectedItem['orgName'];
+				useOrgCdText.text=orgTree.selectedItem['orgCd'];
+				selOrgWin.close();
+			}
+			
+		]]>
+	</fx:Script>
+	<fx:Declarations>
+		<!-- 将非可视元素（例如服务、值对象）放在此处 -->
+	</fx:Declarations>
+	<s:VGroup top="5" left="5" bottom="5" right="5">
+		<hc:Toolbar width="100%" >
+			<hc:ToolbarAddButton id="productAddBtn" label="新增"
+								 click="productAddBtn_clickHandler(event)"
+								 />
+			<hc:ToolbarEditButton id="productEditBtn" label="修改"
+								  click="productEditBtn_clickHandler(event)"
+								  />
+			<hc:ToolbarDeleteButton id="productDelBtn" label="删除"
+								  click="productDelBtn_clickHandler(event)"
+								  />
+			<hc:ToolbarDetailButton	id="productDetailBtn" label="详细"
+									click="productDetailBtn_clickHandler(event)"
+									/>
+			<hc:ToolbarSettingButton id="keepSetBtn" label="维保巡检设置"
+									 click="keepSetBtn_clickHandler(event)"
+									 />
+			<hc:ToolbarSettingButton id="printBarcodeBtn" label="打印二维码"
+									 icon="@Embed('img/barcode-2d.png')"
+									 click="printBarcodeBtn_clickHandler(event)"
+									 />
+			<s:Spacer width="100%" />
+			<toolbar:QueryButton id="moreQueryBtn" label="查询" 
+								 click="moreQueryBtn_clickHandler(event)" />
+		</hc:Toolbar>
+		<hc:DataGrid id="productGrid" width="100%" height="100%"
+					 url="medProductAction!getMedProductPage.do"
+					 pageSize="15" showPageBar="true"
+					 >
+			<hc:columns>
+				<s:ArrayList>
+					<hc:DataGridColumn dataType="rownum" textAlign="center" />
+					<hc:DataGridColumn dataField="selected" 
+									   dataType="checkboxHaveSelectAll" textAlign="center" />
+					<hc:DataGridColumn dataField="productName" headerText="设备名称" dataType="text"
+									   colorFunction="{formatColumnColor}"
+									   />
+					<hc:DataGridColumn dataField="productNo" headerText="二维码" dataType="text"
+									   width="50" textAlign="center"
+									   >
+						<hc:itemRenderer>
+							<fx:Component>
+								<s:GridItemRenderer>
+									<s:HGroup width="100%" height="100%" horizontalAlign="center">
+										<mx:LinkButton id="detailBarcodeBtn" label="" 
+													   width="30" height="20"
+													   icon="@Embed('img/barcode-2d.png')"
+													   click="outerDocument.detailBarcodeBtn_clickHandler(event)"
+														/>
+									</s:HGroup>
+								</s:GridItemRenderer>
+							</fx:Component>
+						</hc:itemRenderer>
+					</hc:DataGridColumn>
+					<hc:DataGridColumn dataField="manufacturer" headerText="生产厂家"
+									   dataType="text"
+									   colorFunction="{formatColumnColor}"
+									   />
+					<hc:DataGridColumn dataField="normName" headerText="规格/型号"
+									   dataType="text"
+									   colorFunction="{formatColumnColor}"
+									   />
+					<hc:DataGridColumn dataField="seriesNo" headerText="序列号"
+									   dataType="text"
+									   colorFunction="{formatColumnColor}"
+									   />
+					<hc:DataGridColumn dataField="regNo" headerText="注册证号"
+									   dataType="text"
+									   colorFunction="{formatColumnColor}"
+									   />
+					<hc:DataGridColumn dataField="categoryName" headerText="分类属性"
+									   dataType="text"
+									   colorFunction="{formatColumnColor}"
+									   />
+					<hc:DataGridColumn dataField="purchaseContractNo" headerText="采购合同号"
+									   dataType="text"
+									   colorFunction="{formatColumnColor1}"
+									   />
+					<hc:DataGridColumn dataField="saleOrgName" headerText="销售单位"
+									   dataType="text"
+									   colorFunction="{formatColumnColor1}"
+									   />
+					<hc:DataGridColumn dataField="saleOrgContact" headerText="联系人"
+									   dataType="text"
+									   colorFunction="{formatColumnColor1}"
+									   />
+					<hc:DataGridColumn dataField="saleOrgTel" headerText="电话"
+									   dataType="text"
+									   colorFunction="{formatColumnColor1}"
+									   />
+					<hc:DataGridColumn dataField="purchasePrice" headerText="采购价格"
+									   dataType="num" textAlign="right"
+									   colorFunction="{formatColumnColor1}"
+									   />
+					<hc:DataGridColumn dataField="useOrgName" headerText="使用单位"
+									   dataType="text"
+									   />
+					<hc:DataGridColumn dataField="useOrgContact" headerText="责任人"
+									   dataType="text"
+									   />
+					<hc:DataGridColumn dataField="useOrgTel" headerText="电话"
+									   dataType="text"
+									   />
+					<hc:DataGridColumn dataField="buildAddr" headerText="设备安装位置"
+									   dataType="text"
+									   />
+					<hc:DataGridColumn dataField="useTime" headerText="投入使用"
+									   dataType="text"
+									   labelFunction="{LabelFunctionUtil.labelFuncDate}"
+									   />
+					<hc:DataGridColumn dataField="keepStartTime" headerText="维保开始日期"
+									   dataType="text"
+									   labelFunction="{LabelFunctionUtil.labelFuncDate}"
+									   />
+					<hc:DataGridColumn dataField="keepEndTime" headerText="维保结束日期"
+									   dataType="text"
+									   labelFunction="{LabelFunctionUtil.labelFuncDate}"
+									   />
+					<hc:DataGridColumn dataField="keepLastTime" headerText="上次维保日期"
+									   dataType="text"
+									   labelFunction="{LabelFunctionUtil.labelFuncDate}"
+									   />
+					<hc:DataGridColumn dataField="keepCycle" headerText="巡检周期"
+									   dataType="text"
+									   />
+				</s:ArrayList>
+			</hc:columns>
+		</hc:DataGrid>
+	</s:VGroup>
+	<hc:PopupWindow id="productWin" contentWidth="670" contentHeight="480" title="增加产品档案"  >
+		<s:VGroup width="100%" height="100%" top="10" left="10" bottom="10" right="10">
+			<hc:FieldSet legend="基本信息" width="100%" height="100%">
+				<hc:Form id="productForm1" width="100%" height="100%" columnCount="3"
+						 paddingTop="0" paddingLeft="15">
+					<hc:FormItem label="设备名称" required="true">
+						<hc:TextInput required="true" fieldName="productName" />
+						<hc:Hidden fieldName="productId" />
+						<hc:Hidden fieldName="keepStartTime" />
+						<hc:Hidden fieldName="keepEndTime" />
+						<hc:Hidden fieldName="keepLastTime" />
+						<hc:Hidden fieldName="keepCycle" />
+					</hc:FormItem>
+					<hc:FormItem label="生产厂家" required="true" >
+						<hc:TextInput required="true" fieldName="manufacturer" />
+					</hc:FormItem>
+					<hc:FormItem label="规格/型号" required="true">
+						<hc:TextInput required="true" fieldName="normName" />
+					</hc:FormItem>
+					<hc:FormItem label="产品序列号" >
+						<hc:TextInput fieldName="seriesNo" />
+					</hc:FormItem>
+					<hc:FormItem label="产品注册证号" >
+						<hc:TextInput fieldName="regNo" />
+					</hc:FormItem>
+					<hc:FormItem label="分类属性" >
+						<hc:TextInput fieldName="categoryName" />
+					</hc:FormItem>
+				</hc:Form>
+			</hc:FieldSet>
+			<hc:FieldSet legend="采购信息" width="100%" height="100%">
+				<hc:Form id="productForm2" width="100%" height="100%" columnCount="3"
+						 paddingTop="0" paddingLeft="15">
+					<hc:FormItem label="采购合同号" >
+						<hc:TextInput fieldName="purchaseContractNo" />
+					</hc:FormItem>
+					<hc:FormItem label="销售单位" >
+						<hc:TextInput fieldName="saleOrgName" />
+					</hc:FormItem>
+					<hc:FormItem label="经办人(联系人)" >
+						<hc:TextInput fieldName="saleOrgContact" />
+					</hc:FormItem>
+					<hc:FormItem label="电话" colSpan="2" >
+						<hc:TextInput fieldName="saleOrgTel" width="90%" />
+					</hc:FormItem>
+					<hc:FormItem label="采购价格(万元)"  >
+						<hc:TextInput fieldName="purchasePrice"
+									  text="0"
+									  dataType="+float2"
+									  />
+					</hc:FormItem>
+				</hc:Form>
+			</hc:FieldSet>
+			<hc:FieldSet legend="使用信息" width="100%" height="100%">
+				<hc:Form id="productForm3" width="100%" height="100%" columnCount="3"
+						 paddingTop="0" paddingLeft="15">
+					<hc:FormItem label="使用单位（科室）" >
+						<s:HGroup width="100%" height="100%">
+							<hc:TextInput id="userOrgNameText" fieldName="useOrgName" enabled="false" />
+							<hc:Hidden id="useOrgCdText" fieldName="useOrgCd" />
+							<hc:ToolbarAddButton id="addUserOrgBtn" label="" width="30"
+												 click="addUserOrgBtn_clickHandler(event)"
+												 />
+						</s:HGroup>
+					</hc:FormItem>
+					<hc:FormItem label="责任人" >
+						<hc:TextInput fieldName="useOrgContact" />
+					</hc:FormItem>
+					<hc:FormItem label="电话" >
+						<hc:TextInput fieldName="useOrgTel" />
+					</hc:FormItem>
+					<hc:FormItem label="设备安装位置" >
+						<hc:TextInput fieldName="buildAddr" />
+					</hc:FormItem>
+					<hc:FormItem label="设备投入使用时间" >
+						<hc:DateField required="true" fieldName="useTime" 
+									  width="130"
+									  />
+					</hc:FormItem>
+				</hc:Form>
+			</hc:FieldSet>
+			<s:HGroup horizontalAlign="right" width="100%">
+				<hc:PrimaryButton id="productSave" label="保存" click="productSave_clickHandler(event)" />
+			</s:HGroup>
+		</s:VGroup>
+	</hc:PopupWindow>
+	<hc:PopupWindow id="selOrgWin" contentWidth="400" contentHeight="460" title="选择单位"  >
+		<s:VGroup width="100%" height="100%" top="10" left="10" bottom="10" right="10">
+			<hc:Tree id="orgTree" width="100%" height="100%" 
+					 labelField="orgName"
+					 />
+			<s:HGroup horizontalAlign="right" width="100%">
+				<hc:PrimaryButton id="selOrgConfBtn" label="确定" click="selOrgConfBtn_clickHandler(event)" />
+			</s:HGroup>
+		</s:VGroup>
+	</hc:PopupWindow>
+	<hc:PopupWindow id="keepSetWin" contentWidth="400" contentHeight="300" title="设置产品档案维保周期"  >
+		<s:VGroup width="100%" height="100%" top="10" left="10" bottom="10" right="10">
+			<hc:Form id="keepSetForm" width="100%" height="100%" columnCount="1"
+					 paddingTop="0" paddingLeft="15">
+				<hc:FormItem label="维保开始日期" required="true">
+					<hc:DateField required="true" fieldName="keepStartTime" 
+								  width="130"
+								  />
+				</hc:FormItem>
+				<hc:FormItem label="维保结束日期" required="true" >
+					<hc:DateField required="true" fieldName="keepEndTime" 
+								  width="130"
+								  />
+				</hc:FormItem>
+				<hc:FormItem label="上次维保日期" required="true">
+					<hc:DateField required="true" fieldName="keepLastTime" 
+								  width="130"
+								  />
+				</hc:FormItem>
+				<hc:FormItem label="巡检周期（天）" required="true">
+					<hc:TextInput fieldName="keepCycle" />
+				</hc:FormItem>
+			</hc:Form>
+			<s:HGroup horizontalAlign="right" width="100%">
+				<hc:PrimaryButton id="keepSetSaveBtn" label="保存" click="keepSetSaveBtn_clickHandler(event)" />
+			</s:HGroup>
+		</s:VGroup>
+	</hc:PopupWindow>
+	<hc:PopupWindow id="moreQueryWin" contentWidth="460" contentHeight="300" title="高级查询"  >
+		<s:VGroup width="100%" height="100%" top="10" left="10" bottom="10" right="10">
+			<hc:Form id="moreQueryForm" width="100%" height="100%" columnCount="2"
+					 paddingTop="0" paddingLeft="15">
+				<hc:FormItem label="设备名称" required="true">
+					<hc:TextInput fieldName="productName" />
+				</hc:FormItem>
+				<hc:FormItem label="采购合同号" >
+					<hc:TextInput fieldName="purchaseContractNo" />
+				</hc:FormItem>
+			</hc:Form>
+			<s:HGroup horizontalAlign="right" width="100%">
+				<hc:PrimaryButton id="moreQueryConfBtn" label="确定" click="moreQueryConfBtn_clickHandler(event)"  />
+				<hc:PrimaryButton id="moreQueryResetBtn" label="重置" click="moreQueryForm.reset();"  />
+			</s:HGroup>
+		</s:VGroup>
+	</hc:PopupWindow>
+	<hc:PopupWindow id="productDetailWin" contentWidth="860" contentHeight="480" title="详细"  >
+		<s:VGroup width="100%" height="100%" top="10" left="10" bottom="10" right="10" gap="0">
+			<common:StepProgressVertical label="基本信息" num="1" select="true" width="130"/>
+			<mx:Grid width="100%"  backgroundColor="#f8f8f8" id="productDetailGrid1" >
+				<mx:GridRow width="100%" height="40">
+					<detailGrid:GridItemHeader horizontalAlign="right" width="90">
+						<detailGrid:DetailLabel text="设备名称" />
+					</detailGrid:GridItemHeader>
+					<detailGrid:GridItemText horizontalAlign="left" width="100%">
+						<detailGrid:DetailLabel fieldName="productName" fontWeight="bold" />
+					</detailGrid:GridItemText>
+					<detailGrid:GridItemHeader horizontalAlign="right" width="90">
+						<detailGrid:DetailLabel text="生产厂家" />
+					</detailGrid:GridItemHeader>
+					<detailGrid:GridItemText horizontalAlign="left" width="100%">
+						<detailGrid:DetailLabel fieldName="manufacturer" fontWeight="bold" />
+					</detailGrid:GridItemText>
+					<detailGrid:GridItemHeader horizontalAlign="right" width="90">
+						<detailGrid:DetailLabel text="规格/型号" />
+					</detailGrid:GridItemHeader>
+					<detailGrid:GridItemText horizontalAlign="left" width="100%">
+						<detailGrid:DetailLabel fieldName="normName" fontWeight="bold" />
+					</detailGrid:GridItemText>
+				</mx:GridRow>
+				<mx:GridRow width="100%" height="40">
+					<detailGrid:GridItemHeader horizontalAlign="right" width="90">
+						<detailGrid:DetailLabel text="产品序列号" />
+					</detailGrid:GridItemHeader>
+					<detailGrid:GridItemText horizontalAlign="left" width="100%">
+						<detailGrid:DetailLabel fieldName="seriesNo" fontWeight="bold" />
+					</detailGrid:GridItemText>
+					<detailGrid:GridItemHeader horizontalAlign="right" width="90">
+						<detailGrid:DetailLabel text="产品注册证号" />
+					</detailGrid:GridItemHeader>
+					<detailGrid:GridItemText horizontalAlign="left" width="100%">
+						<detailGrid:DetailLabel fieldName="regNo" fontWeight="bold" />
+					</detailGrid:GridItemText>
+					<detailGrid:GridItemHeader horizontalAlign="right" width="90">
+						<detailGrid:DetailLabel text="分类属性" />
+					</detailGrid:GridItemHeader>
+					<detailGrid:GridItemText horizontalAlign="left" width="100%">
+						<detailGrid:DetailLabel fieldName="categoryName" fontWeight="bold" />
+					</detailGrid:GridItemText>
+				</mx:GridRow>
+			</mx:Grid>
+			<common:StepProgressVertical label="采购信息" num="2" select="true" width="130"/>
+			<mx:Grid width="100%"  backgroundColor="#f8f8f8" id="productDetailGrid2" >
+				<mx:GridRow width="100%" height="40">
+					<detailGrid:GridItemHeader horizontalAlign="right" width="90">
+						<detailGrid:DetailLabel text="采购合同号" />
+					</detailGrid:GridItemHeader>
+					<detailGrid:GridItemText horizontalAlign="left" width="100%">
+						<detailGrid:DetailLabel fieldName="purchaseContractNo" fontWeight="bold" />
+					</detailGrid:GridItemText>
+					<detailGrid:GridItemHeader horizontalAlign="right" width="90">
+						<detailGrid:DetailLabel text="销售单位" />
+					</detailGrid:GridItemHeader>
+					<detailGrid:GridItemText horizontalAlign="left" width="100%" colSpan="3">
+						<detailGrid:DetailLabel fieldName="saleOrgName" fontWeight="bold" />
+					</detailGrid:GridItemText>
+				</mx:GridRow>
+				<mx:GridRow width="100%" height="40">
+					<detailGrid:GridItemHeader horizontalAlign="right" width="90">
+						<detailGrid:DetailLabel text="经办人" />
+					</detailGrid:GridItemHeader>
+					<detailGrid:GridItemText horizontalAlign="left" width="100%">
+						<detailGrid:DetailLabel fieldName="saleOrgContact" fontWeight="bold" />
+					</detailGrid:GridItemText>
+					<detailGrid:GridItemHeader horizontalAlign="right" width="90">
+						<detailGrid:DetailLabel text="电话" />
+					</detailGrid:GridItemHeader>
+					<detailGrid:GridItemText horizontalAlign="left" width="100%">
+						<detailGrid:DetailLabel fieldName="saleOrgTel" fontWeight="bold" />
+					</detailGrid:GridItemText>
+					<detailGrid:GridItemHeader horizontalAlign="right" width="90">
+						<detailGrid:DetailLabel text="采购价格(万元)" />
+					</detailGrid:GridItemHeader>
+					<detailGrid:GridItemText horizontalAlign="left" width="100%">
+						<detailGrid:DetailLabel fieldName="purchasePrice" fontWeight="bold" />
+					</detailGrid:GridItemText>
+				</mx:GridRow>
+			</mx:Grid>
+			<common:StepProgressVertical label="使用信息" num="3" select="true" width="130"/>
+			<mx:Grid width="100%"  backgroundColor="#f8f8f8" id="productDetailGrid3" >
+				<mx:GridRow width="100%" height="40">
+					<detailGrid:GridItemHeader horizontalAlign="right" width="130">
+						<detailGrid:DetailLabel text="使用单位（科室）" />
+					</detailGrid:GridItemHeader>
+					<detailGrid:GridItemText horizontalAlign="left" width="100%">
+						<detailGrid:DetailLabel fieldName="useOrgName" fontWeight="bold" />
+					</detailGrid:GridItemText>
+					<detailGrid:GridItemHeader horizontalAlign="right" width="90">
+						<detailGrid:DetailLabel text="责任人" />
+					</detailGrid:GridItemHeader>
+					<detailGrid:GridItemText horizontalAlign="left" width="100%">
+						<detailGrid:DetailLabel fieldName="useOrgContact" fontWeight="bold" />
+					</detailGrid:GridItemText>
+					<detailGrid:GridItemHeader horizontalAlign="right" width="90">
+						<detailGrid:DetailLabel text="电话" />
+					</detailGrid:GridItemHeader>
+					<detailGrid:GridItemText horizontalAlign="left" width="100%">
+						<detailGrid:DetailLabel fieldName="useOrgTel" fontWeight="bold" />
+					</detailGrid:GridItemText>
+				</mx:GridRow>
+				<mx:GridRow width="100%" height="40">
+					<detailGrid:GridItemHeader horizontalAlign="right" width="90">
+						<detailGrid:DetailLabel text="设备安装位置" />
+					</detailGrid:GridItemHeader>
+					<detailGrid:GridItemText horizontalAlign="left" width="100%" colSpan="3">
+						<detailGrid:DetailLabel fieldName="buildAddr" fontWeight="bold" />
+					</detailGrid:GridItemText>
+					<detailGrid:GridItemHeader horizontalAlign="right" width="90">
+						<detailGrid:DetailLabel text="投入使用时间" />
+					</detailGrid:GridItemHeader>
+					<detailGrid:GridItemText horizontalAlign="left" width="100%">
+						<detailGrid:DetailLabel fieldName="useTime" fontWeight="bold" />
+					</detailGrid:GridItemText>
+				</mx:GridRow>
+			</mx:Grid>
+			<common:StepProgressVertical label="巡检周期" num="4" select="true" width="130"/>
+			<mx:Grid width="100%"  backgroundColor="#f8f8f8" id="productDetailGrid4" >
+				<mx:GridRow width="100%" height="40">
+					<detailGrid:GridItemHeader horizontalAlign="right" width="90">
+						<detailGrid:DetailLabel text="维保开始日期" />
+					</detailGrid:GridItemHeader>
+					<detailGrid:GridItemText horizontalAlign="left" width="100%">
+						<detailGrid:DetailLabel fieldName="keepStartTime" fontWeight="bold" />
+					</detailGrid:GridItemText>
+					<detailGrid:GridItemHeader horizontalAlign="right" width="90">
+						<detailGrid:DetailLabel text="维保结束日期" />
+					</detailGrid:GridItemHeader>
+					<detailGrid:GridItemText horizontalAlign="left" width="100%">
+						<detailGrid:DetailLabel fieldName="keepEndTime" fontWeight="bold" />
+					</detailGrid:GridItemText>
+					<detailGrid:GridItemHeader horizontalAlign="right" width="90">
+						<detailGrid:DetailLabel text="上次维保日期" />
+					</detailGrid:GridItemHeader>
+					<detailGrid:GridItemText horizontalAlign="left" width="100%">
+						<detailGrid:DetailLabel fieldName="keepLastTime" fontWeight="bold" />
+					</detailGrid:GridItemText>
+					<detailGrid:GridItemHeader horizontalAlign="right" width="90">
+						<detailGrid:DetailLabel text="巡检周期(天)" />
+					</detailGrid:GridItemHeader>
+					<detailGrid:GridItemText horizontalAlign="left" width="100%">
+						<detailGrid:DetailLabel fieldName="keepCycle" fontWeight="bold" />
+					</detailGrid:GridItemText>
+				</mx:GridRow>
+			</mx:Grid>
+		</s:VGroup>
+	</hc:PopupWindow>
+	<hc:PopupWindow id="detailBarcodeWin" contentWidth="320" contentHeight="350" title="产品二维码"  >
+		<s:VGroup width="100%" height="100%" top="10" left="10" bottom="10" right="10">
+			<hc:FieldSet legend="二维码" width="300" height="300">
+				<s:BitmapImage source="@Embed('img/barcode-280.png')" horizontalCenter="0" />
+			</hc:FieldSet>
+			<s:HGroup horizontalAlign="right" width="100%">
+				<hc:PrimaryButton label="打印"  />
+			</s:HGroup>
+		</s:VGroup>
+	</hc:PopupWindow>
+</s:Module>

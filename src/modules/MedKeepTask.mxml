@@ -1,0 +1,594 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--巡检派单-->
+<s:Module xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		  xmlns:s="library://ns.adobe.com/flex/spark" 
+		  xmlns:mx="library://ns.adobe.com/flex/mx" 
+		  width="100%" height="100%"
+		  xmlns:hc="http://flex.hc.org" 
+		  creationComplete="module1_creationCompleteHandler(event)" xmlns:common="common.*" xmlns:detailGrid="hc.components.detailGrid.*"
+		  >
+	<fx:Script>
+		<![CDATA[
+			import hc.components.MessageDialog;
+			import hc.components.MessageTip;
+			import hc.util.FreeFormUtil;
+			import hc.util.HttpUtil;
+			import hc.util.LabelFunctionUtil;
+			import hc.util.Util;
+			
+			import mx.collections.ArrayList;
+			import mx.events.FlexEvent;
+			import mx.events.ListEvent;
+			
+			import spark.components.gridClasses.GridColumn;
+			
+			protected function module1_creationCompleteHandler(event:FlexEvent):void
+			{
+				var param:Object = new Object();
+				HttpUtil.doPost('medKeepTaskAction!format.do',param,function (obj:Object):void{
+					loadKeppTaskGrid();
+					
+					var orgTreeMap:Object = Util.clone(obj.orgTreeMap);
+					orgTree.dataProvider = obj.orgTreeMap;
+					orgTree.validateNow();
+					orgTree.selectedIndex=0;
+					orgTree.expandChildrenOf(orgTree.selectedItem,true);
+					
+					var orgTree1Map:Object = Util.clone(obj.orgTreeMap);
+					orgTree1.dataProvider = obj.orgTreeMap;
+					orgTree1.validateNow();
+					orgTree1.selectedIndex=0;
+					orgTree1.expandChildrenOf(orgTree1.selectedItem,true);
+				});
+			}
+			/**
+			 * 加载任务表格数据
+			 */
+			private function loadKeppTaskGrid():void{
+				var param:Object = new Object;
+				keepTaskGrid.loadData();
+			}
+			/**
+			 * 加载任务产品数据
+			 * @param keepTaskId
+			 * @param type 01编辑，02详细
+			 */
+			private function getMedKeepTaskProductList(keepTaskId:String,type:String):void{
+				var param:Object = new Object;
+				param.keepTaskId=keepTaskId;
+				HttpUtil.doPost('medKeepTaskAction!getMedKeepTaskProductList.do',param,function (obj:Object):void{
+					var keepTaskProductList:ArrayList = new ArrayList(obj.keepTaskProductList as Array); 
+					if("01"==type){
+						productGrid1.dataProvider=keepTaskProductList;
+					}else if("02"==type){
+						productGrid2.dataProvider=keepTaskProductList;
+					}
+				});
+			}
+			/**
+			 * 增加 按钮事件
+			 */
+			protected function keepTaskAddBtn_clickHandler(event:MouseEvent):void
+			{
+				keepTaskForm1.reset();
+				productGrid1.dataProvider = new ArrayList();
+				keepTaskWin.show();
+			}
+			
+			protected function selProductBtn_clickHandler(event:MouseEvent):void
+			{
+				var param:Object = new Object;
+				productGrid.loadData();
+				selProductWin.show();
+			}
+			public static function formatColumnColor(itemData:Object, column:GridColumn):uint
+			{
+				var itemColor:uint=0x000000; //默认黑色；
+				if (itemData.hasOwnProperty("keepWarn"))
+				{
+					itemColor=0xff0000;
+				}
+				itemData.unit=itemColor;
+				return itemColor;
+			}			
+			protected function selProductConfBtn_clickHandler(event:MouseEvent):void
+			{
+				var selProductArr:Array = productGrid.getSelected("selected");
+				var productList00:ArrayList=new ArrayList(selProductArr);
+				if(Util.isNotBlank(productGrid1.dataProvider)){
+					var productList01:ArrayList = productGrid1.dataProvider as ArrayList;
+					aFor:for each(var product00Obj:Object in productList00.source){
+						bFor:for each(var product01Obj:Object in productList01.source){
+							if(product00Obj['productId'] == product01Obj['productId']){
+								continue aFor;
+							}
+						}
+						productList01.addItem(product00Obj);
+					}
+					productGrid1.dataProvider=productList01;
+				}else{
+					productGrid1.dataProvider=productList00;
+				}
+				selProductWin.close();
+			}
+			
+			public function removeProduct_clickHandler():void{
+				productGrid1.dataProvider.removeItemAt(productGrid1.selectedIndex);
+			}
+			
+			protected function selPersonBtn_clickHandler(event:MouseEvent):void
+			{
+				loadAccountGrid();
+				selPersonWin.show();
+				
+			}
+			protected function orgTree_changeHandler(event:ListEvent):void
+			{
+				loadAccountGrid();
+			}
+			/**
+			 * 加载人员表格数据
+			 */
+			private function loadAccountGrid():void{
+				if(orgTree.selectedItem!=null){
+					var orgCd:String = orgTree.selectedItem['orgCd'];
+					var param:Object = new Object;
+					param.orgCd = orgCd;
+					accountGrid.param=param;
+					accountGrid.loadData();
+				}
+			}
+			protected function selPersonConfBtn_clickHandler(event:MouseEvent):void
+			{
+				var selPersonArr:Array = accountGrid.getSelected("selected");
+				if(selPersonArr.length<=0){
+					MessageTip.warning("请选择一个巡检工程师");
+					return;
+				}
+				keepPersonIdText.text = selPersonArr[0].accountId;
+				keepPersonNameText.text = selPersonArr[0].personName;
+				keepPersonTelText.text = selPersonArr[0].tel;
+				keepPersonEmailText.text = selPersonArr[0].email;
+				selPersonWin.close();
+			}
+			
+			protected function addUserOrgBtn_clickHandler(event:MouseEvent):void
+			{
+				selOrgWin.show();
+			}
+			
+			protected function selOrgConfBtn_clickHandler(event:MouseEvent):void
+			{
+				if(Util.isBlank(orgTree1.selectedItem)){
+					MessageTip.warning("请选择单位");
+					return;
+				}
+				userOrgNameText.text=orgTree1.selectedItem['orgName'];
+				useOrgCdText.text=orgTree1.selectedItem['orgCd'];
+				selOrgWin.close();
+			}
+			
+			/**
+			 * 编辑
+			 */
+			public function keepTaskEditBtn_clickHandler(event:MouseEvent):void{
+				var selKeepTaskArr:Array = keepTaskGrid.getSelected("selected");
+				if(selKeepTaskArr.length<=0){
+					MessageTip.warning("请选择一条要操作的记录");
+					return;
+				}
+				if(selKeepTaskArr.length>1){
+					MessageTip.warning("只能对一条记录进行修改");
+					return;
+				}
+				
+				keepTaskForm1.reset();
+				keepTaskForm1.dataValue = selKeepTaskArr[0];
+				
+				//任务产品
+				getMedKeepTaskProductList(selKeepTaskArr[0].keepTaskId,"01");
+				keepTaskWin.show();
+			}
+			/**
+			 * 删除
+			 */
+			public function keepTaskDelBtn_clickHandler(event:MouseEvent):void{
+				var selKeepTaskArr:Array = keepTaskGrid.getSelected("selected");
+				if(selKeepTaskArr.length<=0){
+					MessageTip.warning("请选择要删除的记录");
+					return;
+				}
+				MessageDialog.confirmDelete(function():void{
+					var param:Object = keepTaskGrid.selectedItem;
+					param.productJson = JSON.stringify(selKeepTaskArr);
+					HttpUtil.doPost('medKeepTaskAction!removeKeepTask.do',param,function (obj:Object):void{
+						loadKeppTaskGrid();
+						MessageTip.success("删除成功");
+					},null,true);
+				});
+			}
+			/**
+			 * 详细
+			 */
+			protected function keepTaskDetailBtn_clickHandler(event:MouseEvent):void
+			{
+				var selKeepTaskArr:Array = keepTaskGrid.getSelected("selected");
+				if(selKeepTaskArr.length<=0){
+					MessageTip.warning("请选择一条要查看的记录");
+					return;
+				}
+				if(selKeepTaskArr.length>1){
+					MessageTip.warning("只能对一条记录查看");
+					return;
+				}
+				
+				FreeFormUtil.setFormValue([keepTaskDetailGrid1],selKeepTaskArr[0]);
+				//任务产品
+				getMedKeepTaskProductList(selKeepTaskArr[0].keepTaskId,"02");
+				
+				keepTaskDetailWin.show();
+			}
+			
+			/**
+			 * 保存
+			 */
+			protected function keepTaskSaveBtn_clickHandler(event:MouseEvent):void
+			{
+				if(!FreeFormUtil.validateForm([keepTaskForm1])){
+					return;
+				}
+				if(Util.isBlank(productGrid1.dataProvider)){
+					MessageDialog.warning("请选择巡检产品");
+					return;
+				}
+				var productList:ArrayList = productGrid1.dataProvider as ArrayList;
+				if(productList.length<=0){
+					MessageDialog.warning("请选择巡检产品");
+					return;
+				}
+				
+				var keepTaskObj:Object = FreeFormUtil.getFormParam([keepTaskForm1]);
+				var param:Object = new Object();
+				param['keepTaskJson'] = JSON.stringify(keepTaskObj);
+				param['productJson'] = JSON.stringify(productList.source);
+				HttpUtil.doPost('medKeepTaskAction!saveKeepTask.do',param,function (obj:Object):void{
+					loadKeppTaskGrid();
+					keepTaskForm1.reset();
+					productGrid1.dataProvider = new ArrayList();
+					keepTaskWin.close();
+					MessageTip.success("操作成功");
+				},null,true);
+			}
+			
+		]]>
+	</fx:Script>
+	<fx:Declarations>
+		<!-- 将非可视元素（例如服务、值对象）放在此处 -->
+	</fx:Declarations>
+	<s:VGroup top="5" left="5" bottom="5" right="5">
+		<hc:Toolbar width="100%" >
+			<hc:ToolbarAddButton id="keepTaskAddBtn" label="新增"
+								 click="keepTaskAddBtn_clickHandler(event)"
+								 />
+			<hc:ToolbarEditButton id="keepTaskEditBtn" label="修改"
+								  click="keepTaskEditBtn_clickHandler(event)"
+								  />
+			<hc:ToolbarDeleteButton id="keepTaskDelBtn" label="删除"
+									click="keepTaskDelBtn_clickHandler(event)"
+									/>
+			<hc:ToolbarDetailButton	id="keepTaskDetailBtn" label="详细"
+									click="keepTaskDetailBtn_clickHandler(event)"
+									/>
+		</hc:Toolbar>
+		<hc:DataGrid id="keepTaskGrid" width="100%" height="100%"
+					 url="medKeepTaskAction!getKeepTaskPage.do"
+					 pageSize="15" showPageBar="true"
+					 >
+			<hc:columns>
+				<s:ArrayList>
+					<hc:DataGridColumn dataType="rownum" textAlign="center" />
+					<hc:DataGridColumn dataField="selected" 
+									   dataType="checkboxHaveSelectAll" textAlign="center" />
+					<hc:DataGridColumn dataField="billNo" headerText="巡检单号" dataType="text"
+									   width="110"
+									   />
+					<hc:DataGridColumn dataField="taskStateName" headerText="状态"
+									   dataType="text"
+									   />
+					<hc:DataGridColumn dataField="oprTime" headerText="派单日期" width="70"
+									   dataType="text" labelFunction="{LabelFunctionUtil.labelFuncDate}"
+									   />
+					<hc:DataGridColumn dataField="proNum" headerText="产品总数"
+									   dataType="text" textAlign="right"
+									   />
+					<hc:DataGridColumn dataField="keepPersonName" headerText="巡检工程师"
+									   dataType="text"
+									   />
+					<hc:DataGridColumn dataField="keepPersonTel" headerText="工程师电话"
+									   dataType="text"
+									   />
+					<hc:DataGridColumn dataField="useOrgName" headerText="巡检单位"
+									   dataType="text"
+									   />
+					<hc:DataGridColumn dataField="useOrgContact" headerText="单位责任人"
+									   dataType="text"
+									   />
+					<hc:DataGridColumn dataField="useOrgTel" headerText="单位电话"
+									   dataType="text"
+									   />
+				</s:ArrayList>
+			</hc:columns>
+		</hc:DataGrid>
+	</s:VGroup>
+	<hc:PopupWindow id="keepTaskWin" contentWidth="860" contentHeight="480" title="巡检单"  >
+		<s:VGroup width="100%" height="100%" top="10" left="10" bottom="10" right="10">
+			<s:HGroup width="100%" height="30">
+				<common:StepProgressVertical label="选择巡检工程师\巡检单位" num="1" select="true" width="100%"/>
+			</s:HGroup>
+			<hc:Form id="keepTaskForm1" width="100%" height="90" columnCount="3"
+					 paddingTop="-10" paddingLeft="15">
+				<hc:FormItem label="" required="true" visible="false" includeInLayout="false" >
+					<hc:Hidden fieldName="keepTaskId" />
+					<hc:Hidden fieldName="billNo" />
+					<hc:Hidden fieldName="taskState" />
+				</hc:FormItem>
+				<hc:FormItem label="工程师" required="true" >
+					<s:HGroup width="100%" height="100%">
+						<hc:TextInput id="keepPersonNameText" fieldName="keepPersonName" enabled="false" required="true" />
+						<hc:Hidden id="keepPersonIdText" fieldName="keepPersonId" />
+						<hc:ToolbarAddButton id="selPersonBtn" label="" width="30"
+											 click="selPersonBtn_clickHandler(event)"
+											 />
+					</s:HGroup>
+				</hc:FormItem>
+				<hc:FormItem label="电话" required="true" >
+					<hc:TextInput id="keepPersonTelText" fieldName="keepPersonTel"  required="true" />
+				</hc:FormItem>
+				<hc:FormItem label="电子邮件" >
+					<hc:TextInput id="keepPersonEmailText" fieldName="keepPersonEmail" />
+				</hc:FormItem>
+				<hc:FormItem label="巡检单位" required="true" >
+					<s:HGroup width="100%" height="100%">
+						<hc:TextInput id="userOrgNameText" fieldName="useOrgName" enabled="false" required="true" 
+									  width="90%"/>
+						<hc:Hidden id="useOrgCdText" fieldName="useOrgCd" />
+						<hc:ToolbarAddButton id="addUserOrgBtn" label="" width="30"
+											 click="addUserOrgBtn_clickHandler(event)"
+											 />
+					</s:HGroup>
+				</hc:FormItem>
+				<hc:FormItem label="单位责任人" required="true" >
+					<hc:TextInput fieldName="useOrgContact" required="true" />
+				</hc:FormItem>
+				<hc:FormItem label="电话" >
+					<hc:TextInput fieldName="useOrgTel" required="true" />
+				</hc:FormItem>
+			</hc:Form>
+			<s:HGroup width="100%" height="30">
+				<common:StepProgressVertical label="添加巡检产品" num="2" select="true" width="130"/>
+				<hc:ToolbarAddButton id="selProductBtn" label="添加"
+									 click="selProductBtn_clickHandler(event)"
+									 />
+			</s:HGroup>
+			<hc:DataGrid id="productGrid1" width="100%" height="100%"
+						 >
+				<hc:columns>
+					<s:ArrayList>
+						<hc:DataGridColumn dataField="productName" headerText="设备名称" dataType="text"
+										   width="110"
+										   />
+						<hc:DataGridColumn dataField="manufacturer" headerText="厂家"
+										   dataType="text"
+										   />
+						<hc:DataGridColumn dataField="normName" headerText="规格/型号"
+										   dataType="text"
+										   />
+						<hc:DataGridColumn dataField="useOrgName" headerText="使用单位"
+										   dataType="text"
+										   />
+						<hc:DataGridColumn dataField="useOrgContact" headerText="责任人"
+										   dataType="text"
+										   />
+						<hc:DataGridColumn dataField="useOrgTel" headerText="电话"
+										   dataType="text"
+										   />
+						<hc:DataGridColumn headerText="" width="60">
+							<hc:itemRenderer>
+								<fx:Component>
+									<s:GridItemRenderer>
+										<s:HGroup width="100%" height="100%">
+											<hc:ToolbarDeleteButton id="btn2" label="删除" 
+																	click="outerDocument.removeProduct_clickHandler();"
+																	/>
+										</s:HGroup>
+									</s:GridItemRenderer>
+								</fx:Component>
+							</hc:itemRenderer>
+						</hc:DataGridColumn>
+					</s:ArrayList>
+				</hc:columns>
+			</hc:DataGrid>
+			<s:HGroup horizontalAlign="right" width="100%">
+				<hc:PrimaryButton id="keepTaskSaveBtn" label="保存" click="keepTaskSaveBtn_clickHandler(event)" />
+			</s:HGroup>
+		</s:VGroup>
+	</hc:PopupWindow>
+	<hc:PopupWindow id="selProductWin" contentWidth="1000" contentHeight="480" title="选择巡检产品"  >
+		<s:VGroup width="100%" height="100%" top="10" left="10" bottom="10" right="10">
+			<hc:DataGrid id="productGrid" width="100%" height="100%"
+						 url="medProductAction!getKeepProductPage.do"
+						 pageSize="15" showPageBar="true"
+						 >
+				<hc:columns>
+					<s:ArrayList>
+						<hc:DataGridColumn dataType="rownum" textAlign="center" />
+						<hc:DataGridColumn dataField="selected" 
+										   dataType="checkboxHaveSelectAll" textAlign="center" />
+						<hc:DataGridColumn dataField="useOrgName" headerText="使用单位"
+										   dataType="text"
+										   />
+						<hc:DataGridColumn dataField="productName" headerText="设备名称" dataType="text"
+										   />
+						<hc:DataGridColumn dataField="keepWarn" headerText="维保提醒" dataType="text"
+										   width="70"
+										   colorFunction="{formatColumnColor}"
+										   />
+						<hc:DataGridColumn dataField="keepCurrentTime" headerText="应巡检日期" dataType="text"
+										   />
+						<hc:DataGridColumn dataField="manufacturer" headerText="生产厂家"
+										   dataType="text"
+										   />
+						<hc:DataGridColumn dataField="normName" headerText="规格/型号"
+										   dataType="text"
+										   />
+						<hc:DataGridColumn dataField="seriesNo" headerText="序列号"
+										   dataType="text"
+										   />
+						<hc:DataGridColumn dataField="regNo" headerText="注册证号"
+										   dataType="text"
+										   />
+						<hc:DataGridColumn dataField="categoryName" headerText="分类属性"
+										   dataType="text"
+										   />
+						<hc:DataGridColumn dataField="useOrgContact" headerText="责任人"
+										   dataType="text"
+										   />
+						<hc:DataGridColumn dataField="useOrgTel" headerText="电话"
+										   dataType="text"
+										   />
+						<hc:DataGridColumn dataField="buildAddr" headerText="设备安装位置"
+										   dataType="text"
+										   />
+						<hc:DataGridColumn dataField="useTime" headerText="投入使用"
+										   dataType="text"
+										   labelFunction="{LabelFunctionUtil.labelFuncDate}"
+										   />
+					</s:ArrayList>
+				</hc:columns>
+			</hc:DataGrid>
+			<s:HGroup horizontalAlign="right" width="100%">
+				<hc:PrimaryButton id="selProductConfBtn" label="确定" click="selProductConfBtn_clickHandler(event)" />
+			</s:HGroup>
+		</s:VGroup>
+	</hc:PopupWindow>
+	<hc:PopupWindow id="selPersonWin" contentWidth="900" contentHeight="480" title="选择工程师"  >
+		<s:VGroup width="100%" height="100%" top="10" left="10" bottom="10" right="10">
+			<s:HGroup height="100%" width="100%">
+				<s:Panel title="组织机构" width="300" height="100%">
+					<hc:Tree id="orgTree" width="100%" height="100%" 
+							 labelField="orgName"
+							 change="orgTree_changeHandler(event)"
+							 />
+				</s:Panel>
+				<s:VGroup width="100%" height="100%" gap="0">
+					<hc:DataGrid id="accountGrid" width="100%" height="100%"
+								 url="oppAccountAction!getAccountPage.do"
+								 pageSize="15" showPageBar="true"
+								 >
+						<hc:columns>
+							<s:ArrayList>
+								<hc:DataGridColumn dataField="selected" headerText="" width="40"
+												   dataType="radio" textAlign="center" />
+								<hc:DataGridColumn dataField="personName" headerText="姓名" dataType="text"
+												   width="130"
+												   />
+								<hc:DataGridColumn dataField="tel" headerText="手机号码"
+												   dataType="text"
+												   />
+								<hc:DataGridColumn dataField="email" headerText="电子邮件"
+												   dataType="text"
+												   />
+							</s:ArrayList>
+						</hc:columns>
+					</hc:DataGrid>
+				</s:VGroup>
+			</s:HGroup>
+			<s:HGroup horizontalAlign="right" width="100%">
+				<hc:PrimaryButton id="selPersonConfBtn" label="确定" click="selPersonConfBtn_clickHandler(event)" />
+			</s:HGroup>
+		</s:VGroup>
+	</hc:PopupWindow>
+	<hc:PopupWindow id="selOrgWin" contentWidth="400" contentHeight="460" title="选择单位"  >
+		<s:VGroup width="100%" height="100%" top="10" left="10" bottom="10" right="10">
+			<hc:Tree id="orgTree1" width="100%" height="100%" 
+					 labelField="orgName"
+					 />
+			<s:HGroup horizontalAlign="right" width="100%">
+				<hc:PrimaryButton id="selOrgConfBtn" label="确定" click="selOrgConfBtn_clickHandler(event)" />
+			</s:HGroup>
+		</s:VGroup>
+	</hc:PopupWindow>
+	<hc:PopupWindow id="keepTaskDetailWin" contentWidth="860" contentHeight="480" title="详细"  >
+		<s:VGroup width="100%" height="100%" top="10" left="10" bottom="10" right="10" gap="0">
+			<common:StepProgressVertical label="巡检工程师\巡检单位" num="1" select="true" width="100%"/>
+			<mx:Grid width="100%"  backgroundColor="#f8f8f8" id="keepTaskDetailGrid1" >
+				<mx:GridRow width="100%" height="40">
+					<detailGrid:GridItemHeader horizontalAlign="right" width="90">
+						<detailGrid:DetailLabel text="工程师" />
+					</detailGrid:GridItemHeader>
+					<detailGrid:GridItemText horizontalAlign="left" width="100%">
+						<detailGrid:DetailLabel fieldName="keepPersonName" fontWeight="bold" />
+					</detailGrid:GridItemText>
+					<detailGrid:GridItemHeader horizontalAlign="right" width="90">
+						<detailGrid:DetailLabel text="电话" />
+					</detailGrid:GridItemHeader>
+					<detailGrid:GridItemText horizontalAlign="left" width="100%">
+						<detailGrid:DetailLabel fieldName="keepPersonTel" fontWeight="bold" />
+					</detailGrid:GridItemText>
+					<detailGrid:GridItemHeader horizontalAlign="right" width="90">
+						<detailGrid:DetailLabel text="电子邮件" />
+					</detailGrid:GridItemHeader>
+					<detailGrid:GridItemText horizontalAlign="left" width="100%">
+						<detailGrid:DetailLabel fieldName="keepPersonEmail" fontWeight="bold" />
+					</detailGrid:GridItemText>
+				</mx:GridRow>
+				<mx:GridRow width="100%" height="40">
+					<detailGrid:GridItemHeader horizontalAlign="right" width="90">
+						<detailGrid:DetailLabel text="巡检单位" />
+					</detailGrid:GridItemHeader>
+					<detailGrid:GridItemText horizontalAlign="left" width="100%">
+						<detailGrid:DetailLabel fieldName="useOrgName" fontWeight="bold" />
+					</detailGrid:GridItemText>
+					<detailGrid:GridItemHeader horizontalAlign="right" width="90">
+						<detailGrid:DetailLabel text="单位责任人" />
+					</detailGrid:GridItemHeader>
+					<detailGrid:GridItemText horizontalAlign="left" width="100%">
+						<detailGrid:DetailLabel fieldName="useOrgContact" fontWeight="bold" />
+					</detailGrid:GridItemText>
+					<detailGrid:GridItemHeader horizontalAlign="right" width="90">
+						<detailGrid:DetailLabel text="电话" />
+					</detailGrid:GridItemHeader>
+					<detailGrid:GridItemText horizontalAlign="left" width="100%">
+						<detailGrid:DetailLabel fieldName="useOrgTel" fontWeight="bold" />
+					</detailGrid:GridItemText>
+				</mx:GridRow>
+			</mx:Grid>
+			<common:StepProgressVertical label="巡检产品" num="2" select="true" width="130"/>
+			<hc:DataGrid id="productGrid2" width="100%" height="100%"
+						 >
+				<hc:columns>
+					<s:ArrayList>
+						<hc:DataGridColumn dataField="productName" headerText="设备名称" dataType="text"
+										   width="110"
+										   />
+						<hc:DataGridColumn dataField="manufacturer" headerText="厂家"
+										   dataType="text"
+										   />
+						<hc:DataGridColumn dataField="normName" headerText="规格/型号"
+										   dataType="text"
+										   />
+						<hc:DataGridColumn dataField="useOrgName" headerText="使用单位"
+										   dataType="text"
+										   />
+						<hc:DataGridColumn dataField="useOrgContact" headerText="责任人"
+										   dataType="text"
+										   />
+						<hc:DataGridColumn dataField="useOrgTel" headerText="电话"
+										   dataType="text"
+										   />
+					</s:ArrayList>
+				</hc:columns>
+			</hc:DataGrid>
+		</s:VGroup>
+	</hc:PopupWindow>
+</s:Module>

@@ -1,0 +1,183 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--单位信息-->
+<s:Module xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		  xmlns:s="library://ns.adobe.com/flex/spark" 
+		  xmlns:mx="library://ns.adobe.com/flex/mx" 
+		  width="100%" height="100%"
+		  xmlns:hc="http://flex.hc.org" 
+		  creationComplete="module1_creationCompleteHandler(event)"
+		  >
+	<fx:Script>
+		<![CDATA[
+			import hc.components.MessageDialog;
+			import hc.components.MessageTip;
+			import hc.util.FreeFormUtil;
+			import hc.util.HttpUtil;
+			import hc.util.Util;
+			
+			import mx.collections.ArrayList;
+			import mx.events.FlexEvent;
+			
+			
+			protected function module1_creationCompleteHandler(event:FlexEvent):void
+			{
+				loadOrgTree();
+			}
+			private function loadOrgTree(selOrgTreeObj:Object=null):void{
+				var param:Object = new Object();
+				HttpUtil.doPost('oppOrgAction!getOrg.do', param, function(obj:Object):void{
+					orgTree.dataProvider = obj.orgTreeMap;
+					orgTree.validateNow();
+					orgTree.selectedIndex=0;
+					orgTree.expandChildrenOf(orgTree.selectedItem,true);
+					orgTree_clickHandler(null);
+				});
+			}
+			protected function orgTree_clickHandler(event:MouseEvent):void
+			{
+				getOrgList();
+				
+			}
+			private function getOrgList():void{
+				var param:Object = new Object();
+				param['parentOrgCd']=orgTree.selectedItem['orgCd'];
+				HttpUtil.doPost('oppOrgAction!getOrgList.do', param, function(obj:Object):void{
+					var orgList:ArrayList = new ArrayList(obj.orgList as Array);
+					orgGrid.dataProvider=orgList;
+				}, null, true);
+			}
+			/**
+			 * 增加 按钮事件
+			 */
+			protected function orgAddBtn_clickHandler(event:MouseEvent):void
+			{
+				if(orgTree.selectedItem==null){
+					MessageDialog.warning("请先选择组织单位");
+					return;
+				}
+				orgForm.reset();
+				orgWin.title="增加单位";
+				orgWin.show();
+			}
+			/**
+			 * 编辑
+			 */
+			public function editOrg_clickHandler():void{
+				if(Util.isBlank(orgGrid.selectedItem)){
+					MessageDialog.error("请先选择需要编辑的单位");
+					return;
+				}
+				orgForm.reset();
+				orgForm.dataValue = orgGrid.selectedItem;
+				orgWin.title="编辑";
+				orgWin.show();
+			}
+			/**
+			 * 保存
+			 */
+			protected function orgSave_clickHandler(event:MouseEvent):void
+			{
+				if(!FreeFormUtil.validateForm([orgForm])){
+					return;
+				}
+				var param:Object = FreeFormUtil.getFormParam([orgForm]);
+				param['parentOrgCd']=orgTree.selectedItem['orgCd'];
+				HttpUtil.doPost('oppOrgAction!saveOrg.do',param,function (obj:Object):void{
+					loadOrgTree(orgTree.selectedItem);
+					orgForm.reset();
+					orgWin.close();
+					MessageTip.success("操作成功");
+				},null,true);
+			}
+			/**
+			 * 删除
+			 */
+			public function removeOrg_clickHandler():void{
+				if(Util.isBlank(orgGrid.selectedItem)){
+					MessageDialog.error("请先选择需要删除的单位");
+					return;
+				}
+				MessageDialog.confirmDelete(function():void{
+					var param:Object = orgGrid.selectedItem;
+					HttpUtil.doPost('oppOrgAction!removeOrg.do',param,function (obj:Object):void{
+						getOrgList();
+						orgWin.close();
+						MessageTip.success("删除成功");
+					},null,true);
+				});
+			}
+			
+			
+		]]>
+	</fx:Script>
+	<fx:Declarations>
+		<!-- 将非可视元素（例如服务、值对象）放在此处 -->
+	</fx:Declarations>
+	<s:VGroup top="5" left="5" bottom="5" right="5">
+		<s:HGroup height="100%" width="100%">
+			<s:Panel title="组织机构" width="300" height="100%">
+				<hc:Tree id="orgTree" width="100%" height="100%" 
+						 labelField="orgName"
+						 click="orgTree_clickHandler(event)"
+						 />
+			</s:Panel>
+			<s:VGroup width="100%" height="100%" gap="0">
+				<hc:Toolbar width="100%" >
+					<hc:ToolbarAddButton id="orgAddBtn" label="新增"
+										 click="orgAddBtn_clickHandler(event)"
+										 />
+				</hc:Toolbar>
+				<hc:DataGrid id="orgGrid" width="100%" height="100%"
+							 showPageBar="false"
+							 >
+					<hc:columns>
+						<s:ArrayList>
+							<hc:DataGridColumn dataType="rownum" textAlign="center" />
+							<hc:DataGridColumn dataField="orgName" headerText="组织机构" dataType="text"
+											   width="230"
+											   >
+							</hc:DataGridColumn>
+							<hc:DataGridColumn dataField="orgAddr" headerText="地址"
+											   dataType="text"
+											   />
+							
+							<hc:DataGridColumn headerText="操作" width="130">
+								<hc:itemRenderer>
+									<fx:Component>
+										<s:GridItemRenderer>
+											<s:HGroup width="100%" height="100%">
+												<hc:ToolbarEditButton id="btn1" label="编辑" 
+																	  click="outerDocument.editOrg_clickHandler()"
+																	  />
+												<hc:ToolbarDeleteButton id="btn2" label="删除" 
+																		click="outerDocument.removeOrg_clickHandler()"
+																		/>
+											</s:HGroup>
+										</s:GridItemRenderer>
+									</fx:Component>
+								</hc:itemRenderer>
+							</hc:DataGridColumn>
+						</s:ArrayList>
+					</hc:columns>
+				</hc:DataGrid>
+			</s:VGroup>
+		</s:HGroup>
+	</s:VGroup>
+	<hc:PopupWindow id="orgWin" contentWidth="400" contentHeight="300" title="增加单位"  >
+		<s:VGroup width="100%" height="100%" top="10" left="10" bottom="10" right="10">
+			<hc:Form id="orgForm" width="100%" height="100%" columnCount="1"
+					 paddingTop="0" paddingLeft="15">
+				<hc:FormItem label="单位名称" required="true">
+					<hc:TextInput required="true" fieldName="orgName" />
+					<hc:Hidden fieldName="orgId" />
+				</hc:FormItem>
+				<hc:FormItem label="地址" required="true" >
+					<hc:TextInput required="true" fieldName="orgAddr" width="300"/>
+				</hc:FormItem>
+			</hc:Form>
+			<s:HGroup horizontalAlign="right" width="100%">
+				<hc:PrimaryButton id="orgSave" label="保存" click="orgSave_clickHandler(event)" />
+			</s:HGroup>
+		</s:VGroup>
+	</hc:PopupWindow>
+</s:Module>

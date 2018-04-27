@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--巡检提醒-->
+<s:Module xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		  xmlns:s="library://ns.adobe.com/flex/spark" 
+		  xmlns:mx="library://ns.adobe.com/flex/mx" 
+		  width="100%" height="100%"
+		  xmlns:hc="http://flex.hc.org" 
+		  creationComplete="module1_creationCompleteHandler(event)"
+		  >
+	<fx:Script>
+		<![CDATA[
+			import hc.components.MessageDialog;
+			import hc.components.MessageTip;
+			import hc.util.FreeFormUtil;
+			import hc.util.HttpUtil;
+			import hc.util.LabelFunctionUtil;
+			import hc.util.Util;
+			
+			import mx.collections.ArrayList;
+			import mx.events.FlexEvent;
+			
+			import spark.components.gridClasses.GridColumn;
+			
+			protected function module1_creationCompleteHandler(event:FlexEvent):void
+			{
+				loadProductGrid();
+			}
+			/**
+			 * 加载产品档案表格数据
+			 */
+			private function loadProductGrid():void{
+				var param:Object = new Object;
+				productGrid.loadData();
+			}
+			public static function formatColumnColor(itemData:Object, column:GridColumn):uint
+			{
+				var itemColor:uint=0x000000; //默认黑色；
+				if (itemData.hasOwnProperty("keepWarn"))
+				{
+					itemColor=0xff0000;
+				}
+				itemData.unit=itemColor;
+				return itemColor;
+			}
+			
+		]]>
+	</fx:Script>
+	<fx:Declarations>
+		<!-- 将非可视元素（例如服务、值对象）放在此处 -->
+	</fx:Declarations>
+	<s:VGroup top="5" left="5" bottom="5" right="5">
+		<hc:Toolbar width="100%" >
+			<s:Label text="巡检提醒产品档案：1、7天内到巡检日期；2、超过应巡检日期；3没有巡检派单" color="blue" fontSize="14" />
+		</hc:Toolbar>
+		<hc:DataGrid id="productGrid" width="100%" height="100%"
+					 url="medProductAction!getKeepWarnProductPage.do"
+					 pageSize="15" showPageBar="true"
+					 >
+			<hc:columns>
+				<s:ArrayList>
+					<hc:DataGridColumn dataType="rownum" textAlign="center" />
+					<hc:DataGridColumn dataField="useOrgName" headerText="使用单位"
+									   dataType="text"
+									   />
+					<hc:DataGridColumn dataField="productName" headerText="设备名称" dataType="text"
+									   />
+					<hc:DataGridColumn dataField="keepWarn" headerText="维保提醒" dataType="text"
+									   width="70"
+									   colorFunction="{formatColumnColor}"
+									   />
+					<hc:DataGridColumn dataField="keepCurrentTime" headerText="应巡检日期" dataType="text"
+									   />
+					<hc:DataGridColumn dataField="manufacturer" headerText="生产厂家"
+									   dataType="text"
+									   />
+					<hc:DataGridColumn dataField="normName" headerText="规格/型号"
+									   dataType="text"
+									   />
+					<hc:DataGridColumn dataField="seriesNo" headerText="序列号"
+									   dataType="text"
+									   />
+					<hc:DataGridColumn dataField="regNo" headerText="注册证号"
+									   dataType="text"
+									   />
+					<hc:DataGridColumn dataField="categoryName" headerText="分类属性"
+									   dataType="text"
+									   />
+					<hc:DataGridColumn dataField="useOrgContact" headerText="责任人"
+									   dataType="text"
+									   />
+					<hc:DataGridColumn dataField="useOrgTel" headerText="电话"
+									   dataType="text"
+									   />
+					<hc:DataGridColumn dataField="buildAddr" headerText="设备安装位置"
+									   dataType="text"
+									   />
+					<hc:DataGridColumn dataField="useTime" headerText="投入使用"
+									   dataType="text"
+									   labelFunction="{LabelFunctionUtil.labelFuncDate}"
+									   />
+					<hc:DataGridColumn dataField="keepStartTime" headerText="维保开始日期"
+									   dataType="text"
+									   labelFunction="{LabelFunctionUtil.labelFuncDate}"
+									   />
+					<hc:DataGridColumn dataField="keepEndTime" headerText="维保结束日期"
+									   dataType="text"
+									   labelFunction="{LabelFunctionUtil.labelFuncDate}"
+									   />
+					<hc:DataGridColumn dataField="keepLastTime" headerText="上次维保日期"
+									   dataType="text"
+									   labelFunction="{LabelFunctionUtil.labelFuncDate}"
+									   />
+					<hc:DataGridColumn dataField="keepCycle" headerText="巡检周期"
+									   dataType="text"
+									   />
+				</s:ArrayList>
+			</hc:columns>
+		</hc:DataGrid>
+	</s:VGroup>
+</s:Module>

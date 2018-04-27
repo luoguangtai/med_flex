@@ -1,0 +1,126 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark" 
+		 xmlns:mx="library://ns.adobe.com/flex/mx" width="240" height="145" 
+		 mouseOver="group1_mouseOverHandler(event)"
+		 mouseOut="group1_mouseOutHandler(event)" buttonMode="true" click="group1_clickHandler(event)">
+	<fx:Metadata>
+		[Event(name="menu1Click", type="hc.events.CustomEvent")]
+	</fx:Metadata>
+	<fx:Script>
+		<![CDATA[
+			import hc.events.CustomEvent;
+			import hc.util.Util;
+			protected function group1_mouseOverHandler(event:MouseEvent):void
+			{
+				rect.visible = true;
+			}
+			
+			protected function group1_mouseOutHandler(event:MouseEvent):void
+			{
+				rect.visible = false;
+			}
+			
+			[Bindable]
+			private var _menuData:Object = null;
+			public function set menuData(v:Object):void{
+				_menuData = v;
+				image.source = "medCommAction!getMenuIcon.do?imgFolder="+imgFolder+"&iconName="+_menuData.img;
+				//二级菜单
+				var m2:Array = _menuData.children as Array;
+				var lb:Label = null;
+				var lbLine:Label = null;
+				var j:int=0;
+				var k:int=0;
+				var m2Label:String = "";
+				var m2Label1:String = "";
+				for(var i:int=0;i<m2.length;i++){
+//					if(m2[i].permission!='1'){
+//						continue;
+//					}
+					m2Label=m2Label+m2[i].label;
+					
+					lb = new Label();
+					lb.setStyle("color", "#666666");
+					lb.text = m2[i].label;
+					lb.id =m2[i].cd;
+					
+					lbLine = new Label();
+					lbLine.setStyle("color", "#666666");
+					lbLine.text = '|';
+					
+					if(j<3 && m2Label.length<=15){
+						k=k+1;
+						commGroup1.addElement(lb);
+						commGroup1.addElement(lbLine);
+					}else if(j<5){
+						m2Label1=m2Label1+m2[i].label;
+						if(m2Label1.length<=13){
+							k=k+1;
+							commGroup2.addElement(lb);
+							commGroup2.addElement(lbLine);
+						}
+					}
+					j++;
+				}
+				var lbMore:Label = new Label();
+				lbMore.setStyle("color", "#42569f");
+				lbMore.text = '更多>';
+				if(k==3){
+					commGroup2.addElement(lbMore);
+				}else{
+					if(k<3){
+						commGroup1.addElement(lbMore);
+					}else{
+						commGroup2.addElement(lbMore);
+					}
+				}
+				if(commGroup1.numElements>0 && (commGroup1.getElementAt(commGroup1.numElements-1) as Label).text=='|'){
+					commGroup1.removeElementAt(commGroup1.numElements-1);
+				}
+			}
+			
+			//图标路径
+			[Bindable]
+			public var imgFolder:String;
+			
+			protected function group1_clickHandler(event:MouseEvent):void
+			{
+				var obj:Object = null;
+				if((event.target is Label) && (event.target!=label) 
+					&& (event.target as Label).text!='|'
+					&& (event.target as Label).text!='更多>'){
+					obj = new Object(); 
+					obj.menu1Cd = _menuData.cd;
+					obj.menu2Cd = (event.target as Label).id;
+					this.dispatchEvent(new CustomEvent("menu1Click", obj));
+				}
+				else{
+					obj = new Object(); 
+					obj.menu1Cd = _menuData.cd;
+					obj.menu2Cd = '';
+					this.dispatchEvent(new CustomEvent("menu1Click", obj));
+				}
+			}
+		]]>
+	</fx:Script>
+	
+	<fx:Declarations>
+		<!-- 将非可视元素（例如服务、值对象）放在此处 -->
+	</fx:Declarations>
+	
+	<s:Rect id="rect" visible="false" width="100%" height="100%">
+		<s:fill>
+			<s:SolidColor color="0xFFFFFF"/>
+		</s:fill>
+		<s:stroke>
+			<s:SolidColorStroke color="0x1682c3" weight="1"/>
+		</s:stroke>
+	</s:Rect>
+	
+	<s:BitmapImage id="image" width="50" height="50" x="20" y="10" smooth="true"/>
+	<s:Label id="label" x="80" y="22" text="{_menuData.label}" trackingLeft="2" fontSize="28" fontFamily="微软雅黑" color="0x3A6CA3"/>
+	
+	<s:HGroup id="commGroup1" left="20" top="85" right="5" height="20"/>
+	<s:HGroup id="commGroup2" left="20" top="110" right="5" height="20"/>
+</s:Group>

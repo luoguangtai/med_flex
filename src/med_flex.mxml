@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Application xmlns:fx="http://ns.adobe.com/mxml/2009" 
+			   xmlns:s="library://ns.adobe.com/flex/spark" 
+			   xmlns:mx="library://ns.adobe.com/flex/mx" 
+			   xmlns:hc="http://flex.hc.org"
+			   creationComplete="application1_creationCompleteHandler(event)"
+			   height="100%" width="100%">
+	<fx:Script>
+		<![CDATA[
+			import hc.util.Util;
+			
+			import mx.core.FlexGlobals;
+			import mx.events.FlexEvent;
+			
+			
+			public function loadModule(v:String):void
+			{
+				Util.loadModule(menuModule, 'flex/modules/' + v + '.swf');
+			}
+			
+			protected function application1_creationCompleteHandler(event:FlexEvent):void
+			{
+				var module:String =  FlexGlobals.topLevelApplication.parameters['module'];
+				if(module!=null && module.length>0){
+					loadModule(module);
+				}
+			}
+			
+		]]>
+	</fx:Script>
+	<fx:Declarations>
+		<!-- 将非可视元素（例如服务、值对象）放在此处 -->
+	</fx:Declarations>
+	<s:ModuleLoader id="menuModule" left="0" top="0" right="0" bottom="0" 
+					creationComplete="menuModule.applicationDomain = ApplicationDomain.currentDomain;"/>
+</s:Application>

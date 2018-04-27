@@ -1,0 +1,255 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--人员信息-->
+<s:Module xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		  xmlns:s="library://ns.adobe.com/flex/spark" 
+		  xmlns:mx="library://ns.adobe.com/flex/mx" 
+		  width="100%" height="100%"
+		  xmlns:hc="http://flex.hc.org" 
+		  creationComplete="module1_creationCompleteHandler(event)"
+		  >
+	<fx:Script>
+		<![CDATA[
+			import hc.components.MessageDialog;
+			import hc.components.MessageTip;
+			import hc.util.FreeFormUtil;
+			import hc.util.HttpUtil;
+			import hc.util.Util;
+			
+			import mx.collections.ArrayList;
+			import mx.events.FlexEvent;
+			import mx.events.ListEvent;
+			
+			protected function module1_creationCompleteHandler(event:FlexEvent):void
+			{
+				var param:Object = new Object();
+				HttpUtil.doPost('oppAccountAction!format.do',param,function (obj:Object):void{
+					orgTree.dataProvider = obj.orgTreeMap;
+					orgTree.validateNow();
+					orgTree.selectedIndex=0;
+					orgTree.expandChildrenOf(orgTree.selectedItem,true);
+					
+					loadAccountGrid();
+					
+					permissionTree.dataProvider=obj.appMenuList;
+				});
+				
+			}
+			protected function orgTree_changeHandler(event:ListEvent):void
+			{
+				loadAccountGrid();
+			}
+			/**
+			 * 加载人员表格数据
+			 */
+			private function loadAccountGrid():void{
+				if(orgTree.selectedItem!=null){
+					var orgCd:String = orgTree.selectedItem['orgCd'];
+					var param:Object = new Object;
+					param.orgCd = orgCd;
+					accountGrid.param=param;
+					accountGrid.loadData();
+				}
+			}
+			/**
+			 * 增加 按钮事件
+			 */
+			protected function accountAddBtn_clickHandler(event:MouseEvent):void
+			{
+				if(orgTree.selectedItem==null){
+					MessageDialog.warning("请先选择组织单位");
+					return;
+				}
+				accountForm.reset();
+				accountWin.title="增加人员";
+				accountWin.show();
+			}
+			/**
+			 * 编辑
+			 */
+			public function editAccount_clickHandler():void{
+				if(Util.isBlank(accountGrid.selectedItem)){
+					MessageDialog.warning("请先选择需要编辑的人员");
+					return;
+				}
+				accountForm.reset();
+				accountForm.dataValue = accountGrid.selectedItem;
+				accountWin.title="编辑人员";
+				accountWin.show();
+			}
+			/**
+			 * 保存
+			 */
+			protected function accountSave_clickHandler(event:MouseEvent):void
+			{
+				if(!FreeFormUtil.validateForm([accountForm])){
+					return;
+				}
+				var param:Object = FreeFormUtil.getFormParam([accountForm]);
+				param.orgCd=orgTree.selectedItem['orgCd'];
+				HttpUtil.doPost('oppAccountAction!saveAccount.do',param,function (obj:Object):void{
+					loadAccountGrid();
+					accountForm.reset();
+					accountWin.close();
+					MessageTip.success("操作成功");
+				},null,true);
+			}
+			/**
+			 * 删除
+			 */
+			public function removeAccount_clickHandler():void{
+				if(Util.isBlank(accountGrid.selectedItem)){
+					MessageDialog.warning("请先选择需要删除的人员");
+					return;
+				}
+				MessageDialog.confirmDelete(function():void{
+					var param:Object = accountGrid.selectedItem;
+					HttpUtil.doPost('oppAccountAction!removeAccount.do',param,function (obj:Object):void{
+						loadAccountGrid();
+						accountWin.close();
+						MessageTip.success("删除成功");
+					},null,true);
+				});
+			}
+			
+			protected function permissionSetBtn_clickHandler(event:MouseEvent):void
+			{
+				var selPermissionArry:Array = accountGrid.getSelected("selected");
+				if(selPermissionArry.length <=0 ){
+					MessageTip.warning("请选择一条要操作的记录");
+					return;
+				}
+				if(selPermissionArry.length >1 ){
+					MessageTip.warning("只能对一个用户进行权限调整");
+					return;
+				}
+				var accountId:String = selPermissionArry[0].accountId;
+				var param:Object = new Object();
+				param.accountId=accountId;
+				HttpUtil.doPost('oppPermissionAction!getPermission.do',param,function (obj:Object):void{
+					var permissionList:ArrayList = new ArrayList(obj.permissionList as Array);
+					var menuCdS:String="";
+					for each(var permissionObj:Object in permissionList.source){
+						menuCdS=menuCdS+permissionObj['menuCd']+',';
+					}
+					permissionTree.selectedString("cd",menuCdS);
+					permissionWin.show();
+				},null,true);
+				
+			}
+			
+			protected function permissionSave_clickHandler(event:MouseEvent):void
+			{
+				var selPermissionArry:Array = permissionTree.getSelected(true);
+				var selAccountArry:Array = accountGrid.getSelected("selected");
+				var param:Object = new Object();
+				param.menuJson = JSON.stringify(selPermissionArry);
+				param.accountJson = JSON.stringify(selAccountArry);
+				HttpUtil.doPost('oppPermissionAction!savePermission.do',param,function (obj:Object):void{
+					permissionWin.close();
+					MessageTip.success("操作成功");
+				},null,true);
+			}
+			
+		]]>
+	</fx:Script>
+	<fx:Declarations>
+		<!-- 将非可视元素（例如服务、值对象）放在此处 -->
+	</fx:Declarations>
+	<s:VGroup top="5" left="5" bottom="5" right="5" gap="0">
+		<s:HGroup height="100%" width="100%">
+			<s:Panel title="组织机构" width="300" height="100%">
+				<hc:Tree id="orgTree" width="100%" height="100%" 
+						 labelField="orgName"
+						 change="orgTree_changeHandler(event)"
+						 />
+			</s:Panel>
+			<s:VGroup width="100%" height="100%" gap="0">
+				<hc:Toolbar width="100%" >
+					<hc:ToolbarAddButton id="accountAddBtn" label="增加人员"
+										 click="accountAddBtn_clickHandler(event)"
+										 />
+					<hc:ToolbarSettingButton id="permissionSetBtn" label="权限调整"
+											 click="permissionSetBtn_clickHandler(event)"
+											 />
+				</hc:Toolbar>
+				<hc:DataGrid id="accountGrid" width="100%" height="100%"
+							 url="oppAccountAction!getAccountPage.do"
+							 pageSize="15" showPageBar="true"
+							 >
+					<hc:columns>
+						<s:ArrayList>
+							<hc:DataGridColumn dataType="rownum" textAlign="center" />
+							<hc:DataGridColumn dataField="selected" 
+											   dataType="checkboxHaveSelectAll" textAlign="center" />
+							<hc:DataGridColumn dataField="personName" headerText="姓名" dataType="text"
+											   width="130"
+											   />
+							<hc:DataGridColumn dataField="loginName" headerText="帐号" dataType="text"
+											   width="150"
+											   >
+							</hc:DataGridColumn>
+							<hc:DataGridColumn dataField="tel" headerText="手机号码"
+											   dataType="text"
+											   />
+							<hc:DataGridColumn dataField="email" headerText="电子邮件"
+											   dataType="text"
+											   />
+							<hc:DataGridColumn headerText="操作" width="130">
+								<hc:itemRenderer>
+									<fx:Component>
+										<s:GridItemRenderer>
+											<s:HGroup width="100%" height="100%">
+												<hc:ToolbarEditButton id="btn1" label="编辑" 
+																	  click="outerDocument.editAccount_clickHandler()"
+																	  />
+												<hc:ToolbarDeleteButton id="btn2" label="删除" 
+																		click="outerDocument.removeAccount_clickHandler()"
+																		/>
+											</s:HGroup>
+										</s:GridItemRenderer>
+									</fx:Component>
+								</hc:itemRenderer>
+							</hc:DataGridColumn>
+						</s:ArrayList>
+					</hc:columns>
+				</hc:DataGrid>
+			</s:VGroup>
+		</s:HGroup>
+	</s:VGroup>
+	<hc:PopupWindow id="accountWin" contentWidth="480" contentHeight="280" title="增加人员"  >
+		<s:VGroup width="100%" height="100%" top="10" left="10" bottom="10" right="10">
+			<hc:Form id="accountForm" width="100%" height="100%" columnCount="2"
+					 paddingTop="0" paddingLeft="15">
+				<hc:FormItem label="姓名" required="true" colSpan="2">
+					<hc:TextInput required="true" fieldName="personName" />
+					<hc:Hidden fieldName="accountId" />
+				</hc:FormItem>
+				<hc:FormItem label="登录帐号" required="true" >
+					<hc:TextInput required="true" fieldName="loginName" />
+				</hc:FormItem>
+				<hc:FormItem label="密码" required="true">
+					<hc:TextInput required="true" fieldName="loginPassword" />
+				</hc:FormItem>
+				<hc:FormItem label="联系电话" required="true">
+					<hc:TextInput required="true" fieldName="tel" />
+				</hc:FormItem>
+				<hc:FormItem label="电子邮箱" >
+					<hc:TextInput fieldName="email" />
+				</hc:FormItem>
+			</hc:Form>
+			<s:HGroup horizontalAlign="right" width="100%">
+				<hc:PrimaryButton id="accountSave" label="保存" click="accountSave_clickHandler(event)" />
+			</s:HGroup>
+		</s:VGroup>
+	</hc:PopupWindow>
+	<hc:PopupWindow id="permissionWin" contentWidth="500" contentHeight="480" title="权限设置"  >
+		<s:VGroup width="100%" height="100%" top="10" left="10" bottom="10" right="10">
+			<hc:CheckTree id="permissionTree" width="100%" height="100%" >
+				
+			</hc:CheckTree>
+			<s:HGroup horizontalAlign="right" width="100%">
+				<hc:PrimaryButton id="permissionSave" label="保存" click="permissionSave_clickHandler(event)"  />
+			</s:HGroup>
+		</s:VGroup>
+	</hc:PopupWindow>
+</s:Module>

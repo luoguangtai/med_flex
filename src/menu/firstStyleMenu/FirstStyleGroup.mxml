@@ -1,0 +1,201 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark" 
+		 xmlns:mx="library://ns.adobe.com/flex/mx" width="100%" height="100%" 
+		 implements="menu.IMenuGroup" >
+	<fx:Script>
+		<![CDATA[
+			import hc.events.CustomEvent;
+			import hc.util.Util;
+			
+			import mx.controls.Spacer;
+			
+			import spark.components.HGroup;
+			import spark.components.Image;
+			//三级菜单总数
+			private var m3TotalNum:int=0;
+			//三级菜单右移次数
+			private var m3RightMoveNum:int=0;
+			//三级菜单左移次数
+			private var m3LeftMoveNum:int=0;
+			//三级菜单可以向右移动的次数
+			private var m3AllowNum:int=0;
+			//三级菜单剩余数
+			private var m3SyNum:int=0;
+			//三级菜单X的坐标
+			private var m3X:Number = 0;
+			//显示几个三级菜单
+			private var m3Num:int = 6;
+			private var _menuData:Object = null;
+			public function set menuData(v:Object):void{
+				_menuData = v;
+				group1.removeAllElements();
+				group3.removeAllElements();
+				//一级菜单
+				var m1Array:Array = _menuData.children;
+				var m1Index:int = 0;
+				for(var j:int = 0; j<m1Array.length; j++){
+					if(m1Array[j].permission!='1'){
+						continue;
+					}
+					var m1Img:FirstMenuImage = new FirstMenuImage();
+					m1Img.id =m1Img+m1Index;
+					m1Img.x = m1Index*195*0.8 + m1Index*10;
+					m1Img.y = 10;
+					m1Img.imgFolder = _menuData.imgFolder;//图标路径
+					m1Img.data = m1Array[j];
+					
+					group1.addElement(m1Img);
+					if(m1Index==0){
+						m1Img.y = 0;
+						firstMenuLabel.text = m1Array[j].label;
+						creatM3(m1Array[j]);
+					}
+					m1Img.addEventListener('imageClick',m1ImageClick);
+					m1Index++;
+				}
+			}
+			//创建三级菜单
+			private function creatM3(m3Obj:Object):void{
+				group3.removeAllElements();
+				group3.x=0;
+				var m2Array:Array = m3Obj.children;
+				var m2Index:int = 0;
+				var m3Index:int = 0;
+				for(var i:int = 0; i<m2Array.length; i++){
+					if(m2Array[i].permission!='1'){
+						continue;
+					}
+					var m3Array:Array = m2Array[i].children;
+					for(var j:int = 0; j<m3Array.length; j++){
+						if(m3Array[j].permission!='1'){
+							continue;
+						}
+						var m3Img:ThirdLevenMenu = new ThirdLevenMenu();
+						m3Img.x = m3Index*85 + m3Index*13;
+						m3Img.y = 0;
+						m3Img.imgFolder = _menuData.imgFolder;//图标路径
+						m3Img.data = m3Array[j];
+						m3Img.addEventListener('imageClick',m3ImageClick);
+						group3.addElement(m3Img);
+						m3Index++;
+					}
+					m2Index++;
+				}
+				if(m3Index>m3Num){
+					m3LeftArrow.buttonMode = false;
+					m3LeftArrow.mouseChildren=false;
+					m3LeftArrow.mouseEnabled = false;
+					m3RightArrow.buttonMode = true;
+					m3RightArrow.mouseChildren=true;
+					m3RightArrow.mouseEnabled = true;
+				}else{
+					m3LeftArrow.buttonMode = false;
+					m3LeftArrow.mouseChildren=false;
+					m3LeftArrow.mouseEnabled = false;
+					m3RightArrow.buttonMode = false;
+					m3RightArrow.mouseChildren=false;
+					m3RightArrow.mouseEnabled = false;
+				}
+				m3TotalNum=m3Index;
+				m3RightMoveNum = 0;
+				m3LeftMoveNum = 0;
+				m3AllowNum = m3TotalNum/m3Num;
+				m3SyNum = m3TotalNum%m3Num;
+				m3X = 0;
+			}
+			//一级菜单点击事件
+			private function m1ImageClick(event:CustomEvent):void{
+				(event.target as FirstMenuImage).y=0;
+				for(var i:int=0;i<group1.numElements;i++){
+					if(!((group1.getElementAt(i) as FirstMenuImage)==(event.target as FirstMenuImage))){
+						(group1.getElementAt(i) as FirstMenuImage).y=10;
+					}
+				}
+				firstMenuLabel.text = event.getObject().label;
+				creatM3(event.getObject());
+			}
+			//三级菜单点击事件
+			private function m3ImageClick(event:CustomEvent):void{
+				//				ExternalInterface.call("go", event.getObject().url, event.getObject().label);  
+			}
+			
+			//三级菜单右移动
+			protected function m3RightArrow_clickHandler(event:MouseEvent):void
+			{
+				group3Move.end();
+				if(m3RightMoveNum==(m3AllowNum-1)){
+					group3Move.xTo = -98*m3SyNum + m3RightMoveNum*(-98*m3Num);
+					m3RightArrow.buttonMode = false;
+					m3RightArrow.mouseChildren=false;
+					m3RightArrow.mouseEnabled = false;
+					m3X = -98*m3SyNum + m3RightMoveNum*(-98*m3Num);
+				}else{
+					group3Move.xTo = -98*m3Num + m3RightMoveNum*(-98*m3Num);
+					m3X = -98*m3Num + m3RightMoveNum*(-98*m3Num);
+				}
+				group3Move.play();
+				m3RightMoveNum = m3RightMoveNum + 1;
+				m3LeftArrow.buttonMode = true;
+				m3LeftArrow.mouseChildren=true;
+				m3LeftArrow.mouseEnabled = true;
+			}
+			//三级菜单左移动
+			protected function m3LeftArrow_clickHandler(event:MouseEvent):void
+			{
+				if(m3RightMoveNum==m3AllowNum){
+					m3X =  m3X + (98*m3SyNum);
+				}else{
+					m3X =  m3X + (98*m3Num);
+				}
+				group3Move.end();
+				group3Move.xTo = m3X;
+				group3Move.play();
+				m3RightMoveNum =m3RightMoveNum -1;
+				if(m3RightMoveNum==0){
+					m3LeftArrow.buttonMode = false;
+					m3LeftArrow.mouseChildren=false;
+					m3LeftArrow.mouseEnabled = false;
+				}
+				m3RightArrow.buttonMode = true;
+				m3RightArrow.mouseChildren=true;
+				m3RightArrow.mouseEnabled = true;
+			}
+		]]>
+	</fx:Script>
+	<fx:Declarations>
+		<!-- 将非可视元素（例如服务、值对象）放在此处 -->
+		<s:Fade id="fade1" alphaFrom="0" alphaTo="1"/>
+		<s:Move id="group3Move" target="{group3}"  />
+	</fx:Declarations>
+	<s:Rect	width="100%" height="100%">
+		<s:fill>
+			<s:SolidColor color="#F6F5F4"/>
+		</s:fill>
+	</s:Rect>
+	<s:VGroup left="25" top="15" right="25" clipAndEnableScrolling="true">
+		<!--一级菜单-->
+		<s:HGroup height="210" width="100%" verticalAlign="top" horizontalAlign="center">
+			<s:Group id="group1" />
+		</s:HGroup>
+		<s:Label  id="firstMenuLabel"  fontFamily="微软雅黑" 
+				 fontSize="22" color="#666666" />
+		<s:Line width="100%" height="1">
+			<s:stroke> 
+				<s:SolidColorStroke color="0xd3d7d4" weight="1"/> 
+			</s:stroke> 
+		</s:Line>
+		<!--三级菜单-->
+		<s:HGroup verticalAlign="middle" gap="10" height="130">
+			<s:Image id="m3LeftArrow" source="@Embed(source='m3-left-arrow.png')"  
+					 width="30" height="30" verticalCenter="-20"
+					 smooth="true" buttonMode="true" click="m3LeftArrow_clickHandler(event)"  />
+			<s:Group  width="575" height="100" clipAndEnableScrolling="true"  >
+				<s:Group id="group3" x="0" y="0" ></s:Group>
+			</s:Group>
+			<s:Image id="m3RightArrow" click="m3RightArrow_clickHandler(event)"
+					 source="@Embed(source='m3-right-arrow.png')"  
+					 width="30" height="30" smooth="true" buttonMode="true" />
+		</s:HGroup>
+	</s:VGroup>
+</s:Group>

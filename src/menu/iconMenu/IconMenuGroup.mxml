@@ -1,0 +1,171 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark" 
+		 xmlns:mx="library://ns.adobe.com/flex/mx" width="100%" height="100%" 
+		 implements="menu.IMenuGroup" >
+	<fx:Script>
+		<![CDATA[
+			import hc.events.CustomEvent;
+			import hc.util.Util;
+			
+			import mx.controls.Spacer;
+			
+			import spark.components.HGroup;
+			import spark.components.Image;
+			import spark.components.Label;
+			private var _menuData:Object = null;
+			private var selectMenu1Clildren:Array = null;
+			
+			public function set menuData(v:Object):void{
+				_menuData = v;
+				
+				//一级菜单
+				var m1:Array = _menuData.children as Array;
+				var iconMenu:IconMenu1;
+				var iconMenuSmall:IconMenu1Small;
+				
+				var index:int = 0;
+				for(var i:int=0; i<m1.length; i++){
+					if(m1[i].permission!='1'){
+						continue;
+					}
+					//创建右侧二、三级菜单
+					selectMenu1Clildren = m1[i].children;
+					createMenu(selectMenu1Clildren,'');
+				}
+			}
+			
+			
+			
+			
+			//在右侧创建二级、三级菜单
+			private function createMenu(d:Array,menu2Cd:Object):void{
+				group4.removeAllElements();
+				group3.removeAllElements();
+				
+				if(d==null)return;
+				
+				var index:int = 0;
+				
+				var label1:Label = new Label();
+				label1.text = "全部";
+				label1.setStyle("fontFamily", "微软雅黑");
+				label1.setStyle("color", "#EA0000");
+				label1.buttonMode = true;
+				if(menu2Cd!=''){
+					label1.setStyle("color", "#003366");
+					label1.addEventListener("click",label1_clickHandler);
+//					label1.setStyle('textDecoration', 'underline');
+				}
+				label1.id='';
+				group4.addElement(label1);
+				for(var i:int=0; i<d.length; i++){
+					//上面的文字二级菜单
+					if(d[i].permission!='1'){
+						continue;
+					}
+					var label2:Label = new Label();
+					label2.text = d[i].label;
+					label2.setStyle("fontFamily", "微软雅黑");
+					label2.setStyle("color", "#EA0000");
+					label2.id=d[i].cd;
+					label2.buttonMode = true;
+					if(d[i].cd!=menu2Cd){
+						label2.setStyle("color", "#003366");
+						label2.addEventListener("click",label1_clickHandler);
+//						label2.setStyle('textDecoration', 'underline');
+					}
+					group4.addElement(label2);
+					
+					//二级文字和三级菜单
+					if(menu2Cd!=''){
+						if(d[i].cd!=menu2Cd){
+							continue;
+						}
+					}
+					var g1:Group = new Group();
+					g1.percentWidth = 100;
+					//二级菜单
+					var label:Label = new Label();
+					label.x = 10;
+					label.y = 10;
+					label.text = d[i].label;
+					label.setStyle("fontFamily", "微软雅黑");
+					label.setStyle("fontSize", "16");
+					label.setStyle("color", "#999d9c");
+					g1.addElement(label);
+					
+					index++;
+					
+					//线
+					var line:Line = new Line();
+					line.x = 10;
+					line.y = 35;
+					line.percentWidth = 100;
+					line.stroke = new SolidColorStroke(0xDDDEE0);
+					g1.addElement(line);
+					
+					//三级菜单
+					var m3:Array = d[i].children as Array;
+					var m3Index:int = 0;
+					for(var j:int = 0; j<m3.length; j++){
+						if(m3[j].permission!='1'){
+							continue;
+						}
+						
+						var m3Img:ToolImage = new ToolImage();
+						m3Img.width = 155;
+						m3Img.height = 60;
+						m3Img.x = 20 + m3Index%4*(155 + 10);
+						m3Img.y = 40 + int(m3Index/4)*(60 + 5);
+						m3Img.imgFolder = _menuData.imgFolder;//图标路径
+						m3Img.data = m3[j];
+						m3Img.addEventListener('imageClick', imageClick);
+						g1.addElement(m3Img);
+						
+						m3Index++;
+					}
+					group3.addElement(g1);
+				}
+				//最后再加一个空白
+				var s:Spacer = new Spacer();
+				s.height = 20;
+				group3.addElement(s);
+			}
+			
+			private function imageClick(event:CustomEvent):void{
+				ExternalInterface.call("go", event.getObject().url, encodeURI(event.getObject().label));  
+			}
+			
+			protected function label1_clickHandler(event:MouseEvent):void
+			{
+				createMenu(selectMenu1Clildren,(event.target as Label).id);
+			}
+			
+		]]>
+	</fx:Script>
+	<fx:Declarations>
+		<!-- 将非可视元素（例如服务、值对象）放在此处 -->
+		<s:Fade id="fade1" alphaFrom="0" alphaTo="1"/>
+	</fx:Declarations>
+	
+	<s:Rect width="100%" height="100%">
+		<s:fill>
+			<s:SolidColor color="#F6F5F4"/>
+		</s:fill>
+	</s:Rect>
+	<!--第二个界面-->
+	<s:Group id="mg2" visible="true" left="0" top="0" right="0" bottom="0" showEffect="{fade1}">
+		<s:Line x="0" y="0" height="100%">
+			<s:stroke> 
+				<s:SolidColorStroke color="0xd3d7d4" weight="1"/> 
+			</s:stroke> 
+		</s:Line>
+		<!--二级菜单-->
+		<s:HGroup id="group4" fontSize="14" left="30" top="10" right="0" gap="10"/>
+		<!--二级、三级菜单-->
+		<s:Scroller left="10" top="35" right="0" bottom="0" horizontalScrollPolicy="auto" verticalScrollPolicy="auto" skinClass="hc.skins.scrollbar.ScrollerSkin">
+			<s:VGroup id="group3" width="100%"/>
+		</s:Scroller>
+	</s:Group>
+</s:Group>

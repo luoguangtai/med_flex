@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Application xmlns:fx="http://ns.adobe.com/mxml/2009" 
+			   xmlns:s="library://ns.adobe.com/flex/spark" 
+			   xmlns:mx="library://ns.adobe.com/flex/mx" width="100%" height="100%" initialize="application1_initializeHandler(event)">
+	<fx:Script>
+		<![CDATA[
+			import hc.util.HttpUtil;
+			import hc.util.Util;
+			
+			import menu.IMenuGroup;
+			import menu.firstStyleMenu.FirstStyleGroup; 
+			import menu.iconMenu.IconMenuGroup;
+			
+			import mx.events.FlexEvent;
+			
+			//所有应用的配置
+			private var _apps:Array = null;
+			//记录当前应用的编号，避免重新加载
+			private var currAppCd:String = null;
+			public function loadMenu(appCd:String):void{
+				if(appCd==null || appCd==currAppCd){
+					return;
+				}
+				currAppCd = appCd;
+				this.removeAllElements();
+				
+				if(_apps==null){
+					HttpUtil.doPost('medCommAction!getAppMenuList.do', null, function(obj:Object):void{
+						_apps = obj.appMenuList as Array;
+						//加载菜单
+						makeMenu();
+					});
+				}
+				else{
+					makeMenu();
+				}
+			}
+			
+			private function makeMenu():void{
+				//找出当前应用
+				var appObj:Object = null;
+				for(var i:int=0; i<_apps.length; i++){
+					if(_apps[i].cd==currAppCd){
+						appObj = _apps[i];
+						break;
+					}
+				}
+				
+				var menuGroup:IMenuGroup = null;
+				if(appObj.menuStyle=="first"){
+					menuGroup = new FirstStyleGroup();
+					menuGroup.menuData = appObj;
+				}else{
+					menuGroup = new IconMenuGroup();
+					menuGroup.menuData = appObj;
+				}
+				this.addElement(menuGroup);
+			}
+			
+			protected function application1_initializeHandler(event:FlexEvent):void
+			{
+				Security.allowDomain("*");
+				ExternalInterface.addCallback("loadMenu", loadMenu); 
+			}
+			
+		]]>
+	</fx:Script>
+	<fx:Declarations>
+		<!-- 将非可视元素（例如服务、值对象）放在此处 -->
+	</fx:Declarations>
+	
+</s:Application>

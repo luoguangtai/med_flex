@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark" 
+		 xmlns:mx="library://ns.adobe.com/flex/mx" 
+		 fontFamily="微软雅黑"
+		 buttonMode="true"
+		 click="image_clickHandler(event)"
+		 mouseOver="bg.visible=true;"
+		 mouseOut="bg.visible=false;">
+	<fx:Metadata>
+		[Event(name="imageClick", type="hc.events.CustomEvent")]
+	</fx:Metadata>
+	<fx:Script>
+		<![CDATA[
+			import hc.events.CustomEvent;
+			import hc.util.Util;
+			//数据
+			[Bindable]
+			private var _data:Object;
+			
+			//图标路径
+			[Bindable]
+			public var imgFolder:String;
+			
+
+			public function get data():Object
+			{
+				return _data;
+			}
+
+			public function set data(value:Object):void
+			{
+				_data = value;
+				//设置图标，如果没有设置则用默认图片
+				if(Util.isNotBlank(_data.img)){
+//					img.source = imgFolder + _data.img;
+					img.source = "medCommAction!getMenuIcon.do?imgFolder="+imgFolder+"&iconName="+_data.img;
+				}
+				else{
+//					img.source = 'icon/default.png';
+					img.source = "medCommAction!getMenuIcon.do?iconName="+_data.img;
+				}
+			}
+
+			protected function image_clickHandler(event:MouseEvent):void
+			{
+				this.dispatchEvent(new CustomEvent("imageClick",data));
+			}
+			
+		]]>
+	</fx:Script>
+	
+	
+	
+	<s:Rect id="bg" visible="false" 
+			width="100%" height="100%"
+			topRightRadiusX="3" bottomLeftRadiusX="3" 
+			bottomRightRadiusX="3" topLeftRadiusX="3">
+		<s:fill>
+			<s:SolidColor color="#E7EBF4"/>
+		</s:fill>
+		<s:stroke>
+			<s:SolidColorStroke color="#d5e1f3"/>
+		</s:stroke>
+	</s:Rect>
+	
+	<s:BitmapImage id="img" left="5" width="48" height="48" verticalCenter="0" smooth="true"/>
+	<s:Label id="lb" text="{ _data.label}" left="60" right="2" lineHeight="20" verticalCenter="0" textAlign="left"  fontSize="12"/>
+</s:Group>

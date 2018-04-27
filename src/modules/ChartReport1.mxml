@@ -1,0 +1,232 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--图表报表1-->
+<s:Module xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		  xmlns:s="library://ns.adobe.com/flex/spark" 
+		  xmlns:mx="library://ns.adobe.com/flex/mx" 
+		  width="100%" height="100%"
+		  xmlns:hc="http://flex.hc.org" 
+		  creationComplete="module1_creationCompleteHandler(event)" 
+		  xmlns:flash9="com.anychart.flash9.*"
+		  >
+	<fx:Script>
+		<![CDATA[
+			import com.adobe.utils.StringUtil;
+			import com.anychart.flash9.AnyChart;
+			import com.anychart.flash9.events.AnyChartPointEvent;
+			import com.anychart.flash9.events.EngineEvent;
+			
+			import hc.components.MessageDialog;
+			import hc.components.MessageTip;
+			import hc.util.FreeFormUtil;
+			import hc.util.HttpUtil;
+			import hc.util.LabelFunctionUtil;
+			import hc.util.Util;
+			
+			import modules.chart.ColumnChartXml;
+			
+			import mx.collections.ArrayList;
+			import mx.events.FlexEvent;
+			
+			import spark.components.gridClasses.GridColumn;
+			
+			
+			AnyChart.loadEngine();
+			
+			protected function module1_creationCompleteHandler(event:FlexEvent):void
+			{
+				var param:Object = new Object();
+				HttpUtil.doPost('medProductAction!getStatisticsProductList.do',param,function (obj:Object):void{
+					var yearProductList:ArrayList = new ArrayList(obj.yearProductList as Array);
+					var yearProductSerData:String='';
+					yearProductSerData+='<series type="Bar">';
+					for each(var obj1:Object in yearProductList.source)
+					{
+						yearProductSerData += '<point row="'+ obj1['tagCode'] +'" name="' + obj1['tagName'] +'" y="'+ obj1['tagValue'] +'">';
+						yearProductSerData += '<attributes>';
+						yearProductSerData += '<attribute name="tagCode">'+  obj1['tagCode'] +'</attribute>';
+						yearProductSerData += '<attribute name="tagName">'+  obj1['tagName'] +'</attribute>';
+						yearProductSerData += '<attribute name="dimension">useTime</attribute>';
+						yearProductSerData += '</attributes>';
+						yearProductSerData += '</point>';
+					}
+					yearProductSerData+='</series>';
+					chart1.setXMLString(StringUtil.replace(ColumnChartXml.product1XML.toString(), "#DATA#", yearProductSerData));
+					
+					var priceProductList:ArrayList = new ArrayList(obj.priceProductList as Array);
+					var priceProductSerData:String='';
+					priceProductSerData+='<series type="Bar">';
+					for each(var obj2:Object in priceProductList.source)
+					{
+						priceProductSerData += '<point row="'+ obj2['tagCode'] +'" name="' + obj2['tagName'] +'" y="'+ obj2['tagValue'] +'">';
+						priceProductSerData += '<attributes>';
+						priceProductSerData += '<attribute name="tagCode">'+  obj2['tagCode'] +'</attribute>';
+						priceProductSerData += '<attribute name="tagName">'+  obj2['tagName'] +'</attribute>';
+						yearProductSerData += '<attribute name="dimension">purchasePrice</attribute>';
+						priceProductSerData += '</attributes>';
+						priceProductSerData += '</point>';
+					}
+					priceProductSerData+='</series>';
+					chart2.setXMLString(StringUtil.replace(ColumnChartXml.product2XML.toString(), "#DATA#", priceProductSerData));
+					
+					loadProductGrid("useYearLessOne","");
+				});
+			}
+			
+			/**
+			 * 加载产品档案表格数据
+			 */
+			private function loadProductGrid(useTimeTagCode:String,priceTagCode:String):void{
+				var param:Object = new Object();
+				param.useTimeTagCode = useTimeTagCode;
+				param.priceTagCode = priceTagCode;
+				productGrid.param=param;
+				productGrid.loadData();
+			}
+			
+			protected function chart_pointClickHandler(event:AnyChartPointEvent):void
+			{
+				var dimension:String  = event.getTokenValue('dimension');
+				var tagName:String  = event.getTokenValue('tagName');
+				var tagCode:String  = event.getTokenValue('tagCode');
+				if("useTime"==dimension){
+					loadProductGrid(tagCode,"");
+					productDimTitle.title = "产品档案:投入使用"+tagName;
+				}else{
+					loadProductGrid("",tagCode);
+					productDimTitle.title = "产品档案:采购价格"+tagName;;
+				}
+				
+			}
+			
+			public static function formatColumnColor(itemData:Object, column:GridColumn):uint
+			{
+				var itemColor:uint=0x000000; //默认黑色；
+				if (itemData.hasOwnProperty("productId"))
+				{
+					itemColor=0xA020F0;
+				}
+				itemData.unit=itemColor;
+				return itemColor;
+			}
+			public static function formatColumnColor1(itemData:Object, column:GridColumn):uint
+			{
+				var itemColor:uint=0x000000; //默认黑色；
+				if (itemData.hasOwnProperty("productId"))
+				{
+					itemColor=0x3A5FCD;
+				}
+				itemData.unit=itemColor;
+				return itemColor;
+			}
+			
+			
+		]]>
+	</fx:Script>
+	<fx:Declarations>
+		<!-- 将非可视元素（例如服务、值对象）放在此处 -->
+	</fx:Declarations>
+	<s:VGroup top="5" left="5" bottom="5" right="5">
+		<s:HGroup width="100%" height="50%">
+			<s:HGroup id="group1" width="50%" height="100%" >
+				<flash9:AnyChart id="chart1"
+								 messageNoData="没有数据..."
+								 pointClick="chart_pointClickHandler(event)"
+								 chartHeight="{group1.height}" chartWidth="{group1.width}"/>
+			</s:HGroup>
+			<s:HGroup id="group2" width="50%" height="100%" >
+				<flash9:AnyChart id="chart2"
+								 messageNoData="没有数据..."
+								 pointClick="chart_pointClickHandler(event)"
+								 chartHeight="{group2.height}" chartWidth="{group2.width}"/>
+			</s:HGroup>
+		</s:HGroup>
+		<s:VGroup width="100%" height="100%">
+			<s:Panel id="productDimTitle" title="产品档案:投入使用1年以内" width="100%" height="100%">
+				<hc:DataGrid id="productGrid" width="100%" height="100%"
+							 url="medProductAction!getMedProductPage.do"
+							 pageSize="15" showPageBar="true"
+							 >
+					<hc:columns>
+						<s:ArrayList>
+							<hc:DataGridColumn dataType="rownum" textAlign="center" />
+							<hc:DataGridColumn dataField="productName" headerText="设备名称" dataType="text"
+											   colorFunction="{formatColumnColor}"
+											   />
+							<hc:DataGridColumn dataField="manufacturer" headerText="生产厂家"
+											   dataType="text"
+											   colorFunction="{formatColumnColor}"
+											   />
+							<hc:DataGridColumn dataField="normName" headerText="规格/型号"
+											   dataType="text"
+											   colorFunction="{formatColumnColor}"
+											   />
+							<hc:DataGridColumn dataField="seriesNo" headerText="序列号"
+											   dataType="text"
+											   colorFunction="{formatColumnColor}"
+											   />
+							<hc:DataGridColumn dataField="regNo" headerText="注册证号"
+											   dataType="text"
+											   colorFunction="{formatColumnColor}"
+											   />
+							<hc:DataGridColumn dataField="categoryName" headerText="分类属性"
+											   dataType="text"
+											   colorFunction="{formatColumnColor}"
+											   />
+							<hc:DataGridColumn dataField="purchaseContractNo" headerText="采购合同号"
+											   dataType="text"
+											   colorFunction="{formatColumnColor1}"
+											   />
+							<hc:DataGridColumn dataField="saleOrgName" headerText="销售单位"
+											   dataType="text"
+											   colorFunction="{formatColumnColor1}"
+											   />
+							<hc:DataGridColumn dataField="saleOrgContact" headerText="联系人"
+											   dataType="text"
+											   colorFunction="{formatColumnColor1}"
+											   />
+							<hc:DataGridColumn dataField="saleOrgTel" headerText="电话"
+											   dataType="text"
+											   colorFunction="{formatColumnColor1}"
+											   />
+							<hc:DataGridColumn dataField="purchasePrice" headerText="采购价格"
+											   dataType="num" textAlign="right"
+											   colorFunction="{formatColumnColor1}"
+											   />
+							<hc:DataGridColumn dataField="useOrgName" headerText="使用单位"
+											   dataType="text"
+											   />
+							<hc:DataGridColumn dataField="useOrgContact" headerText="责任人"
+											   dataType="text"
+											   />
+							<hc:DataGridColumn dataField="useOrgTel" headerText="电话"
+											   dataType="text"
+											   />
+							<hc:DataGridColumn dataField="buildAddr" headerText="设备安装位置"
+											   dataType="text"
+											   />
+							<hc:DataGridColumn dataField="useTime" headerText="投入使用"
+											   dataType="text"
+											   labelFunction="{LabelFunctionUtil.labelFuncDate}"
+											   />
+							<hc:DataGridColumn dataField="keepStartTime" headerText="维保开始日期"
+											   dataType="text"
+											   labelFunction="{LabelFunctionUtil.labelFuncDate}"
+											   />
+							<hc:DataGridColumn dataField="keepEndTime" headerText="维保结束日期"
+											   dataType="text"
+											   labelFunction="{LabelFunctionUtil.labelFuncDate}"
+											   />
+							<hc:DataGridColumn dataField="keepLastTime" headerText="上次维保日期"
+											   dataType="text"
+											   labelFunction="{LabelFunctionUtil.labelFuncDate}"
+											   />
+							<hc:DataGridColumn dataField="keepCycle" headerText="巡检周期"
+											   dataType="text"
+											   />
+						</s:ArrayList>
+					</hc:columns>
+				</hc:DataGrid>
+			</s:Panel>
+		</s:VGroup>
+	</s:VGroup>
+</s:Module>

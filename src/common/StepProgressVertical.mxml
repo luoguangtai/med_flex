@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Group xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		 xmlns:s="library://ns.adobe.com/flex/spark"
+		 xmlns:mx="library://ns.adobe.com/flex/mx"  width="100%" height="28">
+	<fx:Declarations>
+		<!-- 将非可视元素（例如服务、值对象）放在此处 -->
+	</fx:Declarations>
+	<fx:Script>
+		<![CDATA[
+			[Bindable]
+			private var _label:String ="";
+			//第几步
+			[Bindable]
+			private var _num:String ="1";
+			//是否选中
+			[Bindable]
+			private var _select:Boolean = false
+			
+			public function get select():Boolean
+			{
+				return _select;
+			}
+			
+			
+			public function set select(value:Boolean):void
+			{
+				_select = value;
+			}
+			
+			public function get num():String
+			{
+				return _num;
+			}
+			
+			public function set num(value:String):void
+			{
+				_num = value;
+			}
+			public function get label():String
+			{
+				return _label;
+			}
+			
+			public function set label(value:String):void
+			{
+				_label = value;
+			}
+			
+		]]>
+	</fx:Script>
+	<s:Group  width="100%" height="100%" >
+		<s:Group x="0" y="0" width="100%" height="100%">
+			<s:Rect width="100%" height="100%" x="0" y="0" radiusX="6" radiusY="6" visible="true">
+				<s:fill>
+					<s:LinearGradient rotation="180">
+						<s:GradientEntry alpha="1.0" color="#FFFFFF" ratio="0.6"/>
+						<s:GradientEntry alpha="1.0" color="#E1EBF5" ratio="1"/>
+					</s:LinearGradient>
+				</s:fill>
+			</s:Rect>
+		</s:Group>
+		<s:RichText color="#1464B4" fontFamily="微软雅黑"  fontSize="14" tabStops="S0 S50" text="{_label}" id="lable" x="32" y="8" />
+		<s:Group  x="2" y="4">
+			<s:Ellipse height="18" width="18" x="1" y="1">
+				<s:fill>
+					<s:LinearGradient rotation="90">
+						<s:GradientEntry alpha="1.0" color="#0000FF" ratio="0"/>
+						<s:GradientEntry alpha="1.0" color="#00BFFF" ratio="1"/>
+					</s:LinearGradient>
+				</s:fill>
+			</s:Ellipse>
+			<s:RichText color="#FFFFFF" fontFamily="Arial" text="{_num}" fontSize="12" fontWeight="bold" tabStops="S0" x="6" y="5"/>
+		</s:Group>
+	</s:Group>
+</s:Group>

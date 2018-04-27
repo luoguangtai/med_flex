@@ -1,0 +1,368 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--维修派单-->
+<s:Module xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		  xmlns:s="library://ns.adobe.com/flex/spark" 
+		  xmlns:mx="library://ns.adobe.com/flex/mx" 
+		  width="100%" height="100%"
+		  xmlns:hc="http://flex.hc.org" 
+		  creationComplete="module1_creationCompleteHandler(event)" xmlns:common="common.*"
+		  >
+	<fx:Script>
+		<![CDATA[
+			
+			import hc.components.MessageDialog;
+			import hc.components.MessageTip;
+			import hc.util.FreeFormUtil;
+			import hc.util.HttpUtil;
+			import hc.util.Util;
+			
+			import mx.collections.ArrayList;
+			import mx.events.FlexEvent;
+			//文件操作类
+			private var file:FileReference = new FileReference(); 
+			private var allTypes:Array = [new FileFilter("Excel 工作簿(*.xls;*.xlsx)","*.xls;*.xlsx")];
+			private var fileSelectFlag:Boolean = false;
+			//账号状态
+			[Bindable]
+			private var accountStateList:ArrayList = new ArrayList([
+				{id:"0",label:"未创建"},
+				{id:"1",label:"已创建"}
+			]); 
+			
+			[Bindable]
+			private var orgList:ArrayList = new ArrayList();
+			
+			protected function module1_creationCompleteHandler(event:FlexEvent):void
+			{
+				getOrgList();
+				loadProductGrid();
+			}
+			/**
+			 * 加载产品档案表格数据
+			 */
+			private function loadProductGrid():void{
+				var param:Object = new Object;
+				repairTaskGrid.loadData();
+			}
+			private function getOrgList():void{
+				var param:Object = new Object();
+				HttpUtil.doPost('medOrgAction!getOrgList.do', param, function(obj:Object):void{
+					orgList = new ArrayList(obj.orgList as Array);
+				}, null, true);
+			}
+			/**
+			 * 增加 按钮事件
+			 */
+			protected function repairTaskAddBtn_clickHandler(event:MouseEvent):void
+			{
+				repairTaskWin.title="新增维修单";
+				repairTaskWin.show();
+			}
+			/**
+			 * 编辑
+			 */
+			public function editPerson_clickHandler():void{
+				if(Util.isBlank(repairTaskGrid.selectedItem)){
+					MessageDialog.error("请先选择需要编辑的产品档案");
+					return;
+				}
+				repairTaskWin.title="编辑维修单";
+				repairTaskWin.show();
+			}
+			/**
+			 * 保存
+			 */
+			protected function repairTaskSave_clickHandler(event:MouseEvent):void
+			{
+				var param:Object = {};
+				MessageTip.success("操作成功");
+				repairTaskWin.close();
+			}
+			
+			
+			protected function selProductBtn_clickHandler(event:MouseEvent):void
+			{
+				var param:Object = new Object;
+				orgProductGrid.loadData();
+				selProductWin.show();
+				
+			}
+			
+			protected function selProductConfBtn_clickHandler(event:MouseEvent):void
+			{
+				var selProductArr:Array = orgProductGrid.getSelected("selected");
+				orgProductForm1.dataValue=selProductArr[0];
+				orgProductForm3.dataValue=selProductArr[0];
+				selProductWin.close();
+			}
+			
+			protected function selPersonBtn_clickHandler(event:MouseEvent):void
+			{
+				var param:Object = new Object;
+				personGrid.loadData();
+				selPersonWin.show();
+				
+			}
+			
+			protected function selPersonConfBtn_clickHandler(event:MouseEvent):void
+			{
+				var selPersonArr:Array = personGrid.getSelected("selected");
+				personForm.dataValue=selPersonArr[0];
+				selPersonWin.close();
+			}
+			
+			protected function repairTaskReceiveBtn_clickHandler(event:MouseEvent):void
+			{
+				MessageDialog.showDialog("确认接单","确定要接受选中的维修单吗？",
+					MessageDialog.FLAG_QUESTION,MessageDialog.BUTTONS_CONFIRMCANCEL,function(s:String):void{
+						if(s=="confirm"){
+							
+						}
+				});
+				
+			}
+			
+			protected function repairTaskAssignBtn_clickHandler(event:MouseEvent):void
+			{
+				var param:Object = new Object;
+				personGrid1.loadData();
+				assignWin.show();
+			}
+			
+			protected function assignConfBtn_clickHandler(event:MouseEvent):void
+			{
+				MessageTip.success("操作成功");
+				assignWin.close();
+			}
+			
+		]]>
+	</fx:Script>
+	<fx:Declarations>
+		<!-- 将非可视元素（例如服务、值对象）放在此处 -->
+	</fx:Declarations>
+	<s:VGroup top="5" left="5" bottom="5" right="5">
+		<hc:Toolbar width="100%" >
+			<hc:ToolbarAddButton id="repairTaskAddBtn" label="新增维修单"
+								 click="repairTaskAddBtn_clickHandler(event)"
+								 />
+			<hc:ToolbarIssueButton id="repairTaskReceiveBtn" label="维修接单"
+								   click="repairTaskReceiveBtn_clickHandler(event)"
+								 />
+			<hc:ToolbarAuditButton id="repairTaskAssignBtn" label="维修派单"
+								   click="repairTaskAssignBtn_clickHandler(event)"
+								 />
+		</hc:Toolbar>
+		<hc:DataGrid id="repairTaskGrid" width="100%" height="100%"
+					 url="medKeepTaskAction!getKeepTaskPage.do"
+					 pageSize="15" showPageBar="true"
+					 >
+			<hc:columns>
+				<s:ArrayList>
+					<hc:DataGridColumn dataType="rownum" textAlign="center" />
+					<hc:DataGridColumn dataField="productName" headerText="报修单号" dataType="text"
+									   width="110"
+									   />
+					<hc:DataGridColumn dataField="categoryName" headerText="状态"
+									   dataType="text"
+									   />
+					<hc:DataGridColumn dataField="seriesNo" headerText="报修单位"
+									   dataType="text"
+									   />
+					<hc:DataGridColumn dataField="normName" headerText="报修人"
+									   dataType="text"
+									   />
+					<hc:DataGridColumn dataField="manufacturer" headerText="报修时间"
+									   dataType="text"
+									   />
+					<hc:DataGridColumn dataField="saleOrgTel" headerText="联系电话"
+									   dataType="text"
+									   />
+					<hc:DataGridColumn dataField="regNo" headerText="设备名称"
+									   dataType="text"
+									   />
+					<hc:DataGridColumn dataField="regNo" headerText="厂家"
+									   dataType="text"
+									   />
+					<hc:DataGridColumn dataField="regNo" headerText="规格/型号"
+									   dataType="text"
+									   />
+					<hc:DataGridColumn dataField="regNo" headerText="序列号"
+									   dataType="text"
+									   />
+				</s:ArrayList>
+			</hc:columns>
+		</hc:DataGrid>
+	</s:VGroup>
+	<hc:PopupWindow id="repairTaskWin" contentWidth="670" contentHeight="480" title="维修单"  >
+		<s:VGroup width="100%" height="100%" top="10" left="10" bottom="10" right="10">
+			<s:HGroup width="100%" height="30">
+				<common:StepProgressVertical label="添加维修产品" num="1" select="true" width="130"/>
+				<hc:ToolbarAddButton id="selProductBtn" label="添加"
+									 click="selProductBtn_clickHandler(event)"
+									 />
+			</s:HGroup>
+			<hc:FieldSet legend="产品属性" width="100%" height="100%">
+				<hc:Form id="orgProductForm1" width="100%" height="100%" columnCount="3"
+						 paddingTop="0" paddingLeft="15">
+					<hc:FormItem label="设备名称" required="true">
+						<hc:TextInput required="true" fieldName="productName" />
+						<hc:Hidden fieldName="orgProductId" />
+					</hc:FormItem>
+					<hc:FormItem label="厂家" required="true" >
+						<hc:TextInput required="true" fieldName="manufacturer" />
+					</hc:FormItem>
+					<hc:FormItem label="规格/型号" required="true">
+						<hc:TextInput required="true" fieldName="normName" />
+					</hc:FormItem>
+					<hc:FormItem label="分类属性" >
+						<hc:TextInput fieldName="categoryName" />
+					</hc:FormItem>
+					<hc:FormItem label="注册证编号" >
+						<hc:TextInput fieldName="regNo" />
+					</hc:FormItem>
+					<hc:FormItem label="序列号" >
+						<hc:TextInput fieldName="seriesNo" />
+					</hc:FormItem>
+				</hc:Form>
+			</hc:FieldSet>
+			<hc:FieldSet legend="使用单位" width="100%" height="100%">
+				<hc:Form id="orgProductForm3" width="100%" height="100%" columnCount="3"
+						 paddingTop="0" paddingLeft="15">
+					<hc:FormItem label="使用单位" >
+						<hc:TextInput fieldName="useOrgName" />
+					</hc:FormItem>
+					<hc:FormItem label="责任人" >
+						<hc:TextInput fieldName="useOrgContact" />
+					</hc:FormItem>
+					<hc:FormItem label="电话" >
+						<hc:TextInput fieldName="useOrgTel" />
+					</hc:FormItem>
+					<hc:FormItem label="安装地址" >
+						<hc:TextInput fieldName="buildAddr" />
+					</hc:FormItem>
+				</hc:Form>
+			</hc:FieldSet>
+			<s:HGroup width="100%" height="30">
+				<common:StepProgressVertical label="选择维修工程师" num="2" select="true" width="130"/>
+				<hc:ToolbarAddButton id="selPersonBtn" label="选择" click="selPersonBtn_clickHandler(event)" />
+			</s:HGroup>
+			<hc:Form id="personForm" width="100%" height="60" columnCount="3"
+					 paddingTop="-10" paddingLeft="15">
+				<hc:FormItem label="工程师" >
+					<hc:TextInput fieldName="personName" enabled="false" />
+					<hc:Hidden fieldName="orgPersonId" />
+				</hc:FormItem>
+				<hc:FormItem label="电话" >
+					<hc:TextInput fieldName="tel" enabled="false" />
+				</hc:FormItem>
+			</hc:Form>
+			<s:HGroup horizontalAlign="right" width="100%">
+				<hc:PrimaryButton id="repairTaskSave" label="保存" click="repairTaskSave_clickHandler(event)" />
+			</s:HGroup>
+		</s:VGroup>
+	</hc:PopupWindow>
+	<hc:PopupWindow id="selProductWin" contentWidth="1000" contentHeight="480" title="选择维修产品"  >
+		<s:VGroup width="100%" height="100%" top="10" left="10" bottom="10" right="10">
+			<hc:DataGrid id="orgProductGrid" width="100%" height="100%"
+						 url="medOrgProductAction!getOrgProductPage.do"
+						 pageSize="15" showPageBar="true"
+						 >
+				<hc:columns>
+					<s:ArrayList>
+						<hc:DataGridColumn dataType="rownum" textAlign="center" />
+						<hc:DataGridColumn dataField="selected" headerText="" 
+										   dataType="radio" textAlign="center" />
+						<hc:DataGridColumn dataField="productName" headerText="设备名称" dataType="text"
+										   width="110"
+										   />
+						<hc:DataGridColumn dataField="manufacturer" headerText="厂家"
+										   dataType="text"
+										   />
+						<hc:DataGridColumn dataField="normName" headerText="规格/型号"
+										   dataType="text"
+										   />
+						<hc:DataGridColumn dataField="categoryName" headerText="分类属性"
+										   dataType="text"
+										   />
+						<hc:DataGridColumn dataField="seriesNo" headerText="序列号"
+										   dataType="text"
+										   />
+						<hc:DataGridColumn dataField="useOrgName" headerText="使用单位"
+										   dataType="text"
+										   />
+						<hc:DataGridColumn dataField="useOrgContact" headerText="责任人"
+										   dataType="text"
+										   />
+						<hc:DataGridColumn dataField="useOrgTel" headerText="电话"
+										   dataType="text"
+										   />
+						<hc:DataGridColumn dataField="buildAddr" headerText="设备安装位置"
+										   dataType="text"
+										   />
+						<hc:DataGridColumn dataField="isKeepTract" headerText="维保合同"
+										   dataType="text"
+										   />
+					</s:ArrayList>
+				</hc:columns>
+			</hc:DataGrid>
+			<s:HGroup horizontalAlign="right" width="100%">
+				<hc:PrimaryButton id="selProductConfBtn" label="确定" click="selProductConfBtn_clickHandler(event)" />
+			</s:HGroup>
+		</s:VGroup>
+	</hc:PopupWindow>
+	<hc:PopupWindow id="selPersonWin" contentWidth="550" contentHeight="430" title="选择工程师"  >
+		<s:VGroup width="100%" height="100%" top="10" left="10" bottom="10" right="10">
+			<hc:DataGrid id="personGrid" width="100%" height="100%"
+						 url="medOrgPersonAction!getOrgPersonPage.do"
+						 pageSize="15" showPageBar="true"
+						 >
+				<hc:columns>
+					<s:ArrayList>
+						<hc:DataGridColumn dataType="radio" textAlign="center" width="40" dataField="selected" headerText="" />
+						<hc:DataGridColumn dataField="personName" headerText="姓名" dataType="text"
+										   width="110"
+										   />
+						<hc:DataGridColumn dataField="tel" headerText="手机号码"
+										   width="110"
+										   dataType="text"
+										   />
+						<hc:DataGridColumn dataField="email" headerText="电子邮件"
+										   dataType="text"
+										   />
+					</s:ArrayList>
+				</hc:columns>
+			</hc:DataGrid>
+			<s:HGroup horizontalAlign="right" width="100%">
+				<hc:PrimaryButton id="selPersonConfBtn" label="确定" click="selPersonConfBtn_clickHandler(event)" />
+			</s:HGroup>
+		</s:VGroup>
+	</hc:PopupWindow>
+	<hc:PopupWindow id="assignWin" contentWidth="550" contentHeight="430" title="维修派单到工程师"  >
+		<s:VGroup width="100%" height="100%" top="10" left="10" bottom="10" right="10">
+			<hc:DataGrid id="personGrid1" width="100%" height="100%"
+						 url="medOrgPersonAction!getOrgPersonPage.do"
+						 pageSize="15" showPageBar="true"
+						 >
+				<hc:columns>
+					<s:ArrayList>
+						<hc:DataGridColumn dataType="radio" textAlign="center" width="40" dataField="selected" headerText="" />
+						<hc:DataGridColumn dataField="personName" headerText="姓名" dataType="text"
+										   width="110"
+										   />
+						<hc:DataGridColumn dataField="tel" headerText="手机号码"
+										   width="110"
+										   dataType="text"
+										   />
+						<hc:DataGridColumn dataField="email" headerText="电子邮件"
+										   dataType="text"
+										   />
+					</s:ArrayList>
+				</hc:columns>
+			</hc:DataGrid>
+			<s:HGroup horizontalAlign="right" width="100%">
+				<hc:PrimaryButton id="assignConfBtn" label="确定" click="assignConfBtn_clickHandler(event)"  />
+			</s:HGroup>
+		</s:VGroup>
+	</hc:PopupWindow>
+	
+</s:Module>
